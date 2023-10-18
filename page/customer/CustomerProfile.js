@@ -1,4 +1,4 @@
-import { ActivityIndicator, Alert, BackHandler, FlatList, Modal, Image, StyleSheet, ScrollView, StatusBar, TouchableOpacity, Text, View, SafeAreaView, Dimensions } from 'react-native'
+import { RefreshControl, ActivityIndicator, Alert, BackHandler, FlatList, Modal, Image, StyleSheet, ScrollView, StatusBar, TouchableOpacity, Text, View, SafeAreaView, Dimensions, ToastAndroid } from 'react-native'
 import React, { useState } from 'react'
 import { globalStyle } from '../../style/globalStyle';
 import { globalColor } from '../../style/globalColor';
@@ -10,6 +10,13 @@ import mime from 'mime';
 import * as ImagePicker from 'expo-image-picker';
 import CustomerTab from '../../component/CustomerTab';
 import { RadioButton, Checkbox } from 'react-native-paper';
+import logout from '../../function/logout';
+import getUser from '../../function/getUser';
+import { dirUrl } from '../../config/baseUrl';
+import customerProfile from '../../function/customerProfile';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import customerPass from '../../function/customerPass';
+import profilePict from '../../function/profilePict';
 
 const CustomerProfile = () => {
 
@@ -17,27 +24,93 @@ const CustomerProfile = () => {
   const [modal, setModal] = useState(false);
   const [modalPass, setModalPass] = useState(false);
   const [disabled, setDisabled] = useState(true);
-  const [bank, setBank] = useState();
-  const [bankLabel, setBankLabel] = useState('Pilih Nama Bank');
-  const [loading, setLoading] = useState(false);
+
+  const [loading, setLoading] = useState(true);
   const [refresh, setRefresh] = useState(Math.random());
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [namaDepan, setNamaDepan] = useState('');
+  const [namaBelakang, setNamaBelakang] = useState('');
+  const [whatsapp, setWhatsapp] = useState('');
+  const [alamat, setAlamat] = useState('');
+  const [jk, setJk] = useState(1);
+
+  const [lama, setLama] = useState();
+  const [baru, setBaru] = useState();
+
   const [uri, seturi] = useState();
   const [name, setname] = useState();
   const [type, settype] = useState();
-  const [jk, setJk] = useState(1);
+  const [imgPreview, setImgPreview] = useState(false);
 
+  const [data, setData] = useState([]);
   onSubmit = async () => {
+    const userData = JSON.parse(await AsyncStorage.getItem('userData'));
+
     setLoading(!loading);
-    setTimeout(() => {
+    setTimeout(async () => {
+      customerProfile(userData.id_user, username, email, namaDepan, namaBelakang, whatsapp, jk, alamat).then((result) => {
+        if (result.status == 0) {
+          ToastAndroid.show('Gagal!', 3000);
+        } else {
+
+          var jenis_kelamin = '';
+          if (jk == 1) {
+            var jenis_kelamin = 'Laki-laki';
+          } else {
+            var jenis_kelamin = 'Perempuan';
+          }
+
+          const newData = {
+            alamat: alamat,
+            email: email,
+            id_jenis_kelamin: jk,
+            id_level: userData.id_level,
+            id_user: userData.id_user,
+            jenis_kelamin: jenis_kelamin,
+            message: userData.message,
+            nama_belakang: namaBelakang,
+            nama_depan: namaDepan,
+            password: userData.password,
+            profile_pict: userData.profile_pict,
+            status: userData.status,
+            username: username,
+            whatsapp: whatsapp,
+          };
+
+          AsyncStorage.setItem('userData', JSON.stringify(newData));
+
+          console.log(newData.profile_pict);
+          seturi(uri);
+          setname(newData.profile_pict);
+          settype(type);
+
+          ToastAndroid.show('Berhasil!', 3000);
+        }
+
+
+      })
       setLoading(false);
     }, 2000);
   }
 
   const onPass = async () => {
+
+    const userData = JSON.parse(await AsyncStorage.getItem('userData'));
     setLoading(!loading);
     setTimeout(() => {
-      setLoading(false);
-      setModalPass(false);
+      customerPass(userData.id_user, lama, baru).then((result) => {
+        if (result.status == 1) {
+          ToastAndroid.show('Berhasil', 3000);
+          setModalPass(false);
+        } else if (result.status == 0) {
+          ToastAndroid.show('Gagal', 3000);
+          setModalPass(false);
+        } else {
+          ToastAndroid.show('Kata sandi tidak sesuai', 3000);
+        }
+        setLoading(false);
+      });
     }, 2000);
   }
 
@@ -52,10 +125,35 @@ const CustomerProfile = () => {
       let uri = result.assets[0].uri;
       let name = result.assets[0].uri.split('/').pop();;
       let type = mime.getType(result.assets[0].uri);
+      const id = data.id_user;
+      const level = data.id_level;
 
-      seturi(uri);
-      setname(name);
-      settype(type);
+      profilePict(id, level, uri, name, type).then(async (result) => {
+        if (result.status == 0) {
+          ToastAndroid.show('Gagal!', 3000);
+        } else {
+          const currData = JSON.parse(await AsyncStorage.getItem('userData'));
+
+          const newData = {
+            alamat: currData.alamat,
+            email: currData.email,
+            id_jenis_kelamin: currData.id_jenis_kelamin,
+            id_level: currData.id_level,
+            id_user: currData.id_user,
+            jenis_kelamin: currData.jenis_kelamin,
+            nama_belakang: currData.nama_belakang,
+            nama_depan: currData.nama_depan,
+            profile_pict: result.img,
+            username: currData.username,
+            whatsapp: currData.whatsapp
+          }
+          AsyncStorage.setItem('userData', JSON.stringify(newData));
+          seturi(uri);
+          setname(result.img);
+          settype(type);
+          ToastAndroid.show('Berhasil!', 3000);
+        }
+      })
     }
   }
 
@@ -68,13 +166,37 @@ const CustomerProfile = () => {
       },
       {
         text: "Keluar", onPress: () => {
-          navigation.navigate('Auth')
+          logout()
         }
       },
     ]);
   }
+
+  useFocusEffect(
+    React.useCallback(() => {
+      getUser().then((result) => {
+        setData(result);
+        setUsername(result.username);
+        setEmail(result.email);
+        setNamaDepan(result.nama_depan);
+        setNamaBelakang(result.nama_belakang);
+        setWhatsapp(result.whatsapp);
+        setAlamat(result.alamat);
+        setJk(result.id_jenis_kelamin);
+        setname(result.profile_pict);
+      });
+
+      setTimeout(() => {
+        setLoading(false);
+      }, 3000);
+    }, [refresh]));
   return (
     <SafeAreaView style={[globalStyle.container, { width: '100%', padding: 0, paddingBottom: 80, backgroundColor: 'white' }]}>
+      <StatusBar
+        animated={true}
+        backgroundColor={globalColor.white}
+        barStyle='dark-content'
+      />
       <Modal
         animationType="fade"
         transparent={true}
@@ -140,13 +262,13 @@ const CustomerProfile = () => {
               <View>
                 <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Kata Sandi Sebelumnya</Text>
                 <View style={[globalStyle.formGroup, globalStyle.input]}>
-                  <TextInput secureTextEntry placeholder='******' style={[globalStyle.inputText, styles.regular]} />
+                  <TextInput secureTextEntry placeholder='******' style={[globalStyle.inputText, styles.regular]} value={lama} onChangeText={setLama} />
                 </View>
               </View>
               <View>
-                <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Nama Belakang</Text>
+                <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Kata Sandi Baru</Text>
                 <View style={[globalStyle.formGroup, globalStyle.input]}>
-                  <TextInput secureTextEntry placeholder='******' style={[globalStyle.inputText, styles.regular]} />
+                  <TextInput secureTextEntry placeholder='******' style={[globalStyle.inputText, styles.regular]} value={baru} onChangeText={setBaru} />
                 </View>
               </View>
               <View style={[globalStyle.formGroup]}>
@@ -158,6 +280,20 @@ const CustomerProfile = () => {
           </View>
         </View>
       </Modal>
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={imgPreview}
+        onRequestClose={() => {
+          setImgPreview(!imgPreview);
+        }}>
+        <View style={[globalStyle.imgModalContainer, { backgroundColor: 'transparent' }]}>
+          <TouchableOpacity style={[globalStyle.closeImgModalBtn, globalStyle.rightBtnTop]} onPress={() => { setImgPreview(!imgPreview) }}>
+            <Image style={globalStyle.closeImg} source={require('../../assets/icon/close-blue.png')} />
+          </TouchableOpacity>
+          <Image style={[globalStyle.showedImg,]} source={{ uri: dirUrl + 'profile_pict/' + name }} />
+        </View>
+      </Modal>
       <View style={[styles.header, { padding: 25 }]}>
         <View style={[globalStyle.headerTitleContainer, { alignItems: 'flex-start' }]}>
           <Text style={[globalStyle.text, styles.semiBold]}>Akun Saya</Text>
@@ -166,11 +302,19 @@ const CustomerProfile = () => {
           <Text style={[globalStyle.text, styles.bold, { color: globalColor.red }]}>Keluar</Text>
         </TouchableOpacity>
       </View>
-      <ScrollView contentContainerStyle={[globalStyle.scrollView, { width: Dimensions.get('screen').width, paddingHorizontal: 25 }]}>
-        <View style={globalStyle.profileImgContainer}>
-          <TouchableOpacity onPress={launchGallery}>
-            <Image resizeMode='contain' style={globalStyle.profileImg} source={require('../../assets/img/user-default.png')} />
-          </TouchableOpacity>
+      <ScrollView contentContainerStyle={[globalStyle.scrollView, { width: Dimensions.get('screen').width, paddingHorizontal: 25 }]} refreshControl={
+        <RefreshControl refreshing={loading} onRefresh={() => {
+          setRefresh(Math.random())
+        }} />
+      }>
+        <View style={{ width: '100%', justifyContent: 'center', alignItems: 'center', }}>
+          <View style={globalStyle.profileImgContainer}>
+            <TouchableOpacity onPress={launchGallery} onLongPress={() => {
+              setImgPreview(!imgPreview)
+            }}>
+              <Image resizeMode='contain' style={globalStyle.profileImg} source={{ uri: dirUrl + 'profile_pict/' + name }} />
+            </TouchableOpacity>
+          </View>
         </View>
         <View style={globalStyle.spaceBetween}>
           <Text style={[globalStyle.text, styles.bold]}>Data Diri</Text>
@@ -181,27 +325,33 @@ const CustomerProfile = () => {
           </TouchableOpacity>
         </View>
         <View>
+          <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Username</Text>
+          <View style={[globalStyle.formGroup, globalStyle.input]}>
+            <TextInput editable={disabled ? false : true} value={username} onChangeText={setUsername} style={[globalStyle.inputText, styles.regular, { opacity: disabled ? 0.5 : 1 }]} />
+          </View>
+        </View>
+        <View>
+          <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Email</Text>
+          <View style={[globalStyle.formGroup, globalStyle.input]}>
+            <TextInput editable={disabled ? false : true} value={email} onChangeText={setEmail} style={[globalStyle.inputText, styles.regular, { opacity: disabled ? 0.5 : 1 }]} />
+          </View>
+        </View>
+        <View>
           <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Nama Depan</Text>
           <View style={[globalStyle.formGroup, globalStyle.input]}>
-            <TextInput editable={disabled ? false : true} placeholder='Masukkan nama depan Anda' style={[globalStyle.inputText, styles.regular, { opacity: disabled ? 0.5 : 1 }]} />
+            <TextInput editable={disabled ? false : true} value={namaDepan} onChangeText={setNamaDepan} style={[globalStyle.inputText, styles.regular, { opacity: disabled ? 0.5 : 1 }]} />
           </View>
         </View>
         <View>
           <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Nama Belakang</Text>
           <View style={[globalStyle.formGroup, globalStyle.input]}>
-            <TextInput editable={disabled ? false : true} placeholder='Masukkan nama belakang Anda' style={[globalStyle.inputText, styles.regular, { opacity: disabled ? 0.5 : 1 }]} />
+            <TextInput editable={disabled ? false : true} value={namaBelakang} onChangeText={setNamaBelakang} style={[globalStyle.inputText, styles.regular, { opacity: disabled ? 0.5 : 1 }]} />
           </View>
         </View>
         <View>
           <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>No. Telepon/Whatsapp</Text>
           <View style={[globalStyle.formGroup, globalStyle.input]}>
-            <TextInput editable={disabled ? false : true} placeholder='Masukkan nama belakang Anda' style={[globalStyle.inputText, styles.regular, { opacity: disabled ? 0.5 : 1 }]} />
-          </View>
-        </View>
-        <View>
-          <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>No. Rekening</Text>
-          <View style={[globalStyle.formGroup, globalStyle.input]}>
-            <TextInput editable={disabled ? false : true} placeholder='Masukkan no. rekening Anda' style={[globalStyle.inputText, styles.regular, { opacity: disabled ? 0.5 : 1 }]} />
+            <TextInput editable={disabled ? false : true} value={whatsapp} onChangeText={setWhatsapp} style={[globalStyle.inputText, styles.regular, { opacity: disabled ? 0.5 : 1 }]} />
           </View>
         </View>
         <View>
@@ -235,7 +385,7 @@ const CustomerProfile = () => {
         <View>
           <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Alamat</Text>
           <View style={[globalStyle.formGroup, globalStyle.input]}>
-            <TextInput editable={disabled ? false : true} placeholder='Masukkan alamat lengkap' style={[globalStyle.inputText, styles.regular, { height: 100 }]} />
+            <TextInput editable={disabled ? false : true} value={alamat} onChangeText={setAlamat} style={[globalStyle.inputText, styles.regular, { height: 100 }]} />
           </View>
         </View>
 

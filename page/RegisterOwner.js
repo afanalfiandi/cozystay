@@ -1,21 +1,42 @@
-import { ActivityIndicator, Modal, TextInput, Image, StyleSheet, ScrollView, StatusBar, TouchableOpacity, Text, View, Dimensions, BackHandler } from 'react-native'
+import { ActivityIndicator, Modal, TextInput, Image, StyleSheet, ScrollView, StatusBar, TouchableOpacity, Text, View, Dimensions, BackHandler, ToastAndroid } from 'react-native'
 import React, { useState } from 'react'
 import { globalColor } from '../style/globalColor';
 import { globalStyle } from '../style/globalStyle';
 import { useFonts, Poppins_400Regular, Poppins_400Regular_Italic, Poppins_600SemiBold, Poppins_600SemiBold_Italic, Poppins_700Bold, Poppins_700Bold_Italic } from '@expo-google-fonts/poppins';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import getPayment from '../function/getPayment';
+import { apiUrl } from '../config/baseUrl';
+import registerOwner from '../function/registerOwner';
 
 const RegisterOwner = ({ route }) => {
   const navigation = useNavigation();
   const lvl = route.params.level;
   const [modal, setModal] = useState(false);
-  const [bank, setBank] = useState();
+
+  const [namaDepan, setNamaDepan] = useState('');
+  const [namaBelakang, setNamaBelakang] = useState('');
+  const [telp, setTelp] = useState('');
+  const [email, setEmail] = useState('');
+  const [rekening, setRekening] = useState('');
+  const [pemilikRekening, setPemilikRekening] = useState('');
+  const [jenisPembayaran, setJenisPembayaran] = useState('');
+
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+
+  const [bank, setBank] = useState([]);
   const [bankLabel, setBankLabel] = useState('Pilih Nama Bank');
+
   const [loading, setLoading] = useState(false);
   const [refresh, setRefresh] = useState(Math.random());
 
   useFocusEffect(
     React.useCallback(() => {
+      getPayment().then(result => {
+        setBank(result);
+      });
+
       const backAction = () => {
         navigation.navigate('ChooseLevel')
         return true;
@@ -44,8 +65,12 @@ const RegisterOwner = ({ route }) => {
   const onSubmit = () => {
     setLoading(!loading);
     setTimeout(() => {
+      if (password == confirmPassword) {
+        registerOwner(jenisPembayaran, namaDepan, namaBelakang, telp, rekening, pemilikRekening, username, password, email);
+      } else {
+        ToastAndroid.show('Kata sandi tidak sesuai', 3000);
+      }
       setLoading(false);
-      navigation.navigate('Auth');
     }, 2000);
   }
   return (
@@ -86,19 +111,23 @@ const RegisterOwner = ({ route }) => {
               </View>
             </View>
             <View style={globalStyle.modalForm}>
-              <TouchableOpacity style={globalStyle.modalOptBtn} onPress={() => {
-                setBank(1);
-                setBankLabel('Mandiri');
-                setModal(!modal);
-              }}>
-                <Text style={styles.regular}>Mandiri</Text>
-              </TouchableOpacity>
+              {bank.map((item, index) => {
+                return (
+                  <TouchableOpacity style={globalStyle.modalOptBtn} onPress={() => {
+                    setJenisPembayaran(item.id_jenis_pembayaran);
+                    setBankLabel(item.jenis_pembayaran);
+                    setModal(!modal);
+                  }} key={index}>
+                    <Text style={styles.regular}>{item.jenis_pembayaran}</Text>
+                  </TouchableOpacity>
+                )
+              })}
             </View>
           </View>
         </View>
       </Modal>
-      <View style={[globalStyle.container, { marginBottom: Dimensions.get("screen").width / 1.4, }]}>
-        <View style={styles.header}>
+      <View style={[globalStyle.container, { marginBottom: Dimensions.get("screen").width / 1.1, }]}>
+        <View style={[styles.header, { marginTop: Dimensions.get("screen").width / 1.1 }]}>
           <Image resizeMode='contain' source={require('../assets/logo/app-logo-blue.png')} />
           <Text style={[styles.bold, globalStyle.pageTitle]}>cozystay</Text>
         </View>
@@ -109,35 +138,35 @@ const RegisterOwner = ({ route }) => {
           <View>
             <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Nama Depan</Text>
             <View style={[globalStyle.formGroup, globalStyle.input]}>
-              <TextInput placeholder='Masukkan nama depan Anda' style={[globalStyle.inputText, styles.regular]} />
+              <TextInput value={namaDepan} onChangeText={setNamaDepan} placeholder='Masukkan nama depan Anda' style={[globalStyle.inputText, styles.regular]} />
             </View>
           </View>
 
           <View>
             <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Nama Belakang</Text>
             <View style={[globalStyle.formGroup, globalStyle.input]}>
-              <TextInput placeholder='Masukkan belakang Anda' style={[globalStyle.inputText, styles.regular]} />
+              <TextInput value={namaBelakang} onChangeText={setNamaBelakang} placeholder='Masukkan belakang Anda' style={[globalStyle.inputText, styles.regular]} />
             </View>
           </View>
 
           <View>
             <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>No. Telepon/Whatsapp</Text>
             <View style={[globalStyle.formGroup, globalStyle.input]}>
-              <TextInput placeholder='Masukkan no. telepon/whatsapp Anda' style={[globalStyle.inputText, styles.regular]} />
+              <TextInput value={telp} onChangeText={setTelp} placeholder='Diawali dengan 628xxxx' style={[globalStyle.inputText, styles.regular]} />
             </View>
           </View>
 
           <View>
             <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>E-mail</Text>
             <View style={[globalStyle.formGroup, globalStyle.input]}>
-              <TextInput placeholder='Masukkan e-mail Anda' style={[globalStyle.inputText, styles.regular]} />
+              <TextInput value={email} onChangeText={setEmail} placeholder='Masukkan e-mail Anda' style={[globalStyle.inputText, styles.regular]} />
             </View>
           </View>
 
           <View>
             <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>No. Rekening</Text>
             <View style={[globalStyle.formGroup, globalStyle.input]}>
-              <TextInput placeholder='Masukkan no. rekening Anda' style={[globalStyle.inputText, styles.regular]} />
+              <TextInput value={rekening} onChangeText={setRekening} placeholder='Masukkan no. rekening Anda' style={[globalStyle.inputText, styles.regular]} />
             </View>
           </View>
 
@@ -158,26 +187,33 @@ const RegisterOwner = ({ route }) => {
           <View>
             <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Nama Pemilik Rekening</Text>
             <View style={[globalStyle.formGroup, globalStyle.input]}>
-              <TextInput placeholder='Masukkan nama pemilik rekening' style={[globalStyle.inputText, styles.regular]} />
+              <TextInput value={pemilikRekening} onChangeText={setPemilikRekening} placeholder='Masukkan nama pemilik rekening' style={[globalStyle.inputText, styles.regular]} />
+            </View>
+          </View>
+
+          <View>
+            <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Username</Text>
+            <View style={[globalStyle.formGroup, globalStyle.input]}>
+              <TextInput value={username} onChangeText={setUsername} placeholder='Masukkan username' style={[globalStyle.inputText, styles.regular]} />
             </View>
           </View>
 
           <View>
             <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Kata Sandi</Text>
             <View style={[globalStyle.formGroup, globalStyle.input]}>
-              <TextInput secureTextEntry placeholder='Masukkan kata sandi' style={[globalStyle.inputText, styles.regular]} />
+              <TextInput value={password} onChangeText={setPassword} secureTextEntry placeholder='Masukkan kata sandi' style={[globalStyle.inputText, styles.regular]} />
             </View>
           </View>
 
           <View>
             <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Konfirmasi Kata Sandi</Text>
             <View style={[globalStyle.formGroup, globalStyle.input]}>
-              <TextInput secureTextEntry placeholder='Masukkan ulang kata sandi' style={[globalStyle.inputText, styles.regular]} />
+              <TextInput value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry placeholder='Masukkan ulang kata sandi' style={[globalStyle.inputText, styles.regular]} />
             </View>
           </View>
 
           <View style={[globalStyle.formGroup]}>
-            <TouchableOpacity style={globalStyle.btnPrimary} onPress={onSubmit}>
+            <TouchableOpacity style={[globalStyle.btnPrimary, { opacity: namaDepan == '' || namaBelakang == '' || telp == '' || email == '' || rekening == '' || jenisPembayaran == '' || pemilikRekening == '' || password == '' || confirmPassword == '' ? 0.5 : 1 }]} onPress={onSubmit} disabled={namaDepan == '' || namaBelakang == '' || telp == '' || email == '' || rekening == '' || jenisPembayaran == '' || pemilikRekening == '' || password == '' || confirmPassword == '' ? true : false}>
               <Text style={[globalStyle.btnText, styles.bold]}>daftar</Text>
             </TouchableOpacity>
           </View>

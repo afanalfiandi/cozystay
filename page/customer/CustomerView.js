@@ -1,75 +1,50 @@
-import { ImageBackground, ActivityIndicator, Alert, BackHandler, FlatList, Modal, Image, StyleSheet, ScrollView, StatusBar, TouchableOpacity, Text, View, SafeAreaView, Dimensions } from 'react-native'
+import { ImageBackground, ActivityIndicator, Alert, BackHandler, FlatList, Modal, Image, StyleSheet, ScrollView, StatusBar, TouchableOpacity, Text, View, SafeAreaView, Dimensions, ToastAndroid } from 'react-native'
 import React, { useState } from 'react'
 import { globalStyle } from '../../style/globalStyle';
 import { globalColor } from '../../style/globalColor';
 import { TextInput } from 'react-native';
 import { useFonts, Poppins_400Regular, Poppins_400Regular_Italic, Poppins_600SemiBold, Poppins_600SemiBold_Italic, Poppins_700Bold, Poppins_700Bold_Italic } from '@expo-google-fonts/poppins';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import SkeletonList from '../../component/SkeletonList';
 import { Linking } from 'react-native';
+import viewKos from '../../function/viewKos';
+import viewKosFasilitas from '../../function/viewKosFasilitas';
+import Rupiah from '../../component/Rupiah';
+import viewKosImg from '../../function/viewKosImg';
+import { dirUrl } from '../../config/baseUrl';
+import deleteKos from '../../function/deleteKos';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const CustomerView = () => {
+const CustomerView = ({ route }) => {
     const navigation = useNavigation();
     const [loading, setLoading] = useState(true);
     const [refresh, setRefresh] = useState(Math.random());
+
     const [modal, setModal] = useState(false);
     const [imgToPreview, setImgToPreview] = useState();
-    
-    const img = [
-        {
-            id: 1,
-            img: require('../../assets/kost/landscape-1.png')
-        },
-        {
-            id: 2,
-            img: require('../../assets/kost/landscape-2.png')
-        },
-        {
-            id: 3,
-            img: require('../../assets/kost/landscape-3.png')
-        },
-        {
-            id: 4,
-            img: require('../../assets/kost/landscape-5.png')
-        },
-        {
-            id: 5,
-            img: require('../../assets/kost/landscape-5.png')
-        },
-        {
-            id: 6,
-            img: require('../../assets/kost/landscape-5.png')
-        },
-    ]
+    const id = route.params.id;
+    const [data, setData] = useState([]);
+    const [fasilitas, setFasilitas] = useState([]);
+    const [imgJumbo, setimgJumbo] = useState([]);
+    const [image, setImage] = useState([]);
 
-    const fasilitas = [
-        {
-            id: 1,
-            facility: 'Kamar mandi dalam'
-        },
-        {
-            id: 2,
-            facility: 'AC'
-        },
-        {
-            id: 3,
-            facility: 'Wi-Fi'
-        },
-        {
-            id: 4,
-            facility: 'Listrik'
-        },
-        {
-            id: 5,
-            facility: 'PDAM'
-        },
-        {
-            id: 6,
-            facility: 'Dapur bersama'
-        },
-    ]
+
     useFocusEffect(
         React.useCallback(() => {
+            setTimeout(() => {
+                viewKos(id).then((result) => {
+                    setData(result[0]);
+                    console.log(result);
+                });
+
+                viewKosFasilitas(id).then((result) => {
+                    setFasilitas(result);
+                })
+
+                viewKosImg(id).then((result) => {
+                    setImage(result);
+                    setimgJumbo(result[0].img)
+                })
+            }, 500);
         }, [refresh]));
 
     let [fontsLoaded, fontError] = useFonts({
@@ -79,12 +54,36 @@ const CustomerView = () => {
     if (!fontsLoaded && !fontError) {
         return null;
     }
+
+    const onSewa = async (id, alamat, fasilitas, harga, label, jenis_kos, img, nama_kos) => {
+        const userData = JSON.parse(await AsyncStorage.getItem('userData'));
+        const nama_user = userData.nama_depan + ' ' + userData.nama_belakang;
+        const whatsapp = userData.whatsapp;
+        const jenis_kelamin = userData.jenis_kelamin;
+        navigation.navigate('CustomerSewa', {
+            id: id, alamat: alamat, fasilitas: fasilitas, harga: harga, label: label,
+            jenis_kos: jenis_kos, nama_user: nama_user, whatsapp: whatsapp, jenis_kelamin: jenis_kelamin, img: img, nama_kos: nama_kos
+        });
+    }
+
     const onPreviewImg = (img) => {
         setModal(!modal);
         setImgToPreview(img)
     }
-    return (
-        <SafeAreaView style={[globalStyle.container, { padding: 0, justifyContent: 'flex-start' }]}>
+
+    const onMap = (lat, long) => {
+        Linking.openURL('google.navigation:q=' + lat + '+' + long)
+    }
+
+    const onWhatsapp = async (numb, nama_kos, nama_depan) => {
+        const userData = JSON.parse(await AsyncStorage.getItem('userData'));
+        const nama = userData.nama_depan + ' ' + userData.nama_belakang;
+
+        const text = 'Halo Bpk/Ibu ' + nama_depan + '.%0a%0aSaya tertarik untuk mengetahui lebih lanjut tentang kos *' + nama_kos + '* yang Anda tawarkan pada aplikasi CozyStay. Bisakah Anda memberikan informasi tentang harga, lokasi, dan ketersediaan kamar kos? Terima kasih atas bantuannya.%0a%0aSalam, ' + nama;
+        Linking.openURL('whatsapp://send?phone=' + numb + '&text=' + text)
+    }
+    const PreviewImg = () => {
+        return (
             <Modal
                 animationType="fade"
                 transparent={true}
@@ -96,11 +95,16 @@ const CustomerView = () => {
                     <TouchableOpacity style={globalStyle.closeImgModalBtn} onPress={() => { setModal(!modal) }}>
                         <Image style={globalStyle.closeImg} source={require('../../assets/icon/close-white.png')} />
                     </TouchableOpacity>
-                    <Image style={globalStyle.showedImg} source={imgToPreview} />
+                    <Image style={globalStyle.showedImg} source={{ uri: dirUrl + 'kos/' + imgToPreview }} />
                 </View>
             </Modal>
+        )
+    }
+    return (
+        <SafeAreaView style={[globalStyle.container, { padding: 0, justifyContent: 'flex-start' }]}>
+            <PreviewImg />
             <View style={globalStyle.topView}>
-                <ImageBackground source={require('../../assets/kost/potrait-1.png')} resizeMode="cover" style={globalStyle.imageView}>
+                <ImageBackground source={{ uri: dirUrl + 'kos/' + imgJumbo }} resizeMode="cover" style={globalStyle.imageView}>
                     <TouchableOpacity style={[globalStyle.rightBtnTop, { borderRadius: 100, margin: 15 }]} onPress={() => {
                         navigation.goBack();
                     }}>
@@ -110,43 +114,40 @@ const CustomerView = () => {
                 <View style={[globalStyle.previewContainer]}>
                     <FlatList
                         horizontal
-                        data={img}
-                        renderItem={({ item }) => {
+                        data={image}
+                        renderItem={({ item, index }) => {
                             return (
-                                <TouchableOpacity key={item.id} style={{ marginHorizontal: 3 }} onPress={() => {
+                                <TouchableOpacity key={index} style={{ marginHorizontal: 3 }} onPress={() => {
                                     onPreviewImg(item.img)
                                 }}>
-                                    <Image source={item.img} style={globalStyle.imgPreview} />
+                                    <Image source={{ uri: dirUrl + 'kos/' + item.img }} style={globalStyle.imgPreview} />
                                 </TouchableOpacity>
                             )
                         }}
-                        keyExtractor={item => item.id}
+                        keyExtractor={(item, index) => index}
                     />
                 </View>
             </View>
             <View style={[globalStyle.content, { paddingHorizontal: 15 }]}>
                 <View style={globalStyle.contentHeader}>
                     <View style={globalStyle.catContainerPreview}>
-                        <Text style={[globalStyle.textSm, styles.regular]}>Putri</Text>
+                        <Text style={[globalStyle.textSm, styles.regular]}>{data.jenis_kos}</Text>
                     </View>
-                    <TouchableOpacity style={globalStyle.previewBtnPrimary}>
+                    <TouchableOpacity style={globalStyle.previewBtnPrimary} onPress={() => { onMap(data.latitude, data.longitude) }}>
                         <Image source={require('../../assets/icon/location-white-md.png')} />
                     </TouchableOpacity>
                 </View>
-                <Text style={[globalStyle.h1, styles.bold, { marginTop: 15 }]}>The Retro Residence</Text>
-                <Text style={[globalStyle.label, styles.regular,]}>Jl. Raya Dukuhwaluh No.17 </Text>
-
-                <View style={globalStyle.ownerInfoContainer}>
-                    <View style={globalStyle.ownerImgContainer}>
-                        <Image style={globalStyle.profileImg} source={require('../../assets/img/user-default.png')} />
+                <View style={[globalStyle.spaceBetween, { alignItems: 'center' }]}>
+                    <View style={[globalStyle.profileImgContainer, { width: '10%', flex: 1, backgroundColor: 'white' }]}>
+                        <Image resizeMode='contain' style={globalStyle.profileImg} source={{ uri: dirUrl + 'profile_pict/' + data.profile_pict }} />
                     </View>
-                    <View style={globalStyle.ownerIdentityContainer}>
-                        <Text style={[globalStyle.inputLabel, styles.bold, { color: globalColor.dark }]}>Bernadya</Text>
-                        <Text style={[globalStyle.label, styles.regular]}>Pemilik</Text>
+                    <View style={{ width: '60%' }}>
+                        <Text style={[globalStyle.h1, styles.bold, { marginTop: 15 }]}>{data.nama_kos}</Text>
+                        <Text style={[globalStyle.label, styles.regular,]}>{data.alamat} </Text>
                     </View>
-                    <View style={globalStyle.ownerContactContainer}>
-                        <TouchableOpacity style={[globalStyle.previewBtnSecondary, { padding: 20, marginHorizontal: 2 }]} onPress={() => {
-                            Linking.openURL('http://api.whatsapp.com/send?phone=6283195270389');
+                    <View style={{ width: '15%', justifyContent: 'center', alignItems: 'flex-end' }}>
+                        <TouchableOpacity style={[globalStyle.roundBtn]} onPress={() => {
+                            onWhatsapp(data.whatsapp, data.nama_kos, data.nama_depan, data.nama_pemilik)
                         }}>
                             <Image source={require('../../assets/icon/outline-whatsapp-blue.png')} />
                         </TouchableOpacity>
@@ -154,26 +155,33 @@ const CustomerView = () => {
                 </View>
 
                 <Text style={[globalStyle.inputLabel, styles.bold, { marginTop: 15 }]}>Fasilitas</Text>
-                <View style={[globalStyle.ownerInfoContainer, { marginTop: 0, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'flex-start' }]}>
-                    {fasilitas.map((item) => {
-                        return (
-                            <View style={[globalStyle.facilityContainerPreview]} key={item.id}>
-                                <Text style={[globalStyle.textSm, styles.regular]}>{item.facility}</Text>
-                            </View>
-                        )
-                    })}
+
+                <View style={[globalStyle.facilityContainerPreview, { alignSelf: 'flex-start' }]}>
+                    <Text style={[styles.regular]}>{data.fasilitas}</Text>
                 </View>
             </View>
             <View style={[globalStyle.contentFooter, { paddingHorizontal: 15 }]}>
-                <Text style={[globalStyle.text, styles.bold]}>Rp. 500.000/bulan</Text>
+                <View style={[globalStyle.spaceArround, { alignItems: 'center' }]}>
+                    <Rupiah numb={data.harga} />
+                    <Text style={[styles.regular, globalStyle.textSm]}>/{data.label}</Text>
+                </View>
 
-                <TouchableOpacity style={globalStyle.footerBtn} onPress={()=>{
-                    navigation.navigate('CustomerSewa')
+                <TouchableOpacity style={[globalStyle.footerBtn, { backgroundColor: globalColor.primary }]} onPress={() => {
+                    var id = data.kos_id;
+                    var alamat = data.alamat;
+                    var fasilitas = data.fasilitas;
+                    var harga = data.harga;
+                    var label = data.label;
+                    var jenis_kos = data.jenis_kos;
+                    var img = data.img;
+                    var nama_kos = data.nama_kos;
+
+                    onSewa(id, alamat, fasilitas, harga, label, jenis_kos, img, nama_kos);
                 }}>
-                    <Text style={[globalStyle.textWhite, styles.bold]}>Ajukan sewa</Text>
+                    <Text style={[globalStyle.textWhite, styles.bold]}>Sewa</Text>
                 </TouchableOpacity>
             </View>
-        </SafeAreaView>
+        </SafeAreaView >
     )
 }
 

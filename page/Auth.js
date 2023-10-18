@@ -5,7 +5,7 @@ import { globalColor } from '../style/globalColor';
 import { TextInput } from 'react-native';
 import { useFonts, Poppins_400Regular, Poppins_400Regular_Italic, Poppins_600SemiBold, Poppins_600SemiBold_Italic, Poppins_700Bold, Poppins_700Bold_Italic } from '@expo-google-fonts/poppins';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import authentication from '../function/authentication';
 const Auth = () => {
     const [refresh, setRefresh] = useState(Math.random());
     const [loading, setLoading] = useState(false);
@@ -21,14 +21,10 @@ const Auth = () => {
     const onSubmit = async () => {
         setLoading(!loading);
         setTimeout(() => {
-            if (level == 1) {
-                AsyncStorage.setItem('level', 'customer');
-                navigation.navigate('CustomerHome')
-            } else if (level == 2) {
-                AsyncStorage.setItem('level', 'owner');
-                navigation.navigate('OwnerHome')
+            if (username == undefined || password == undefined || level == undefined) {
+                ToastAndroid.show('Mohon lengkapi form terlebih dahulu!', 3000);
             } else {
-                ToastAndroid.show('Silahkan lengkapi form terlebih dahulu!', 3000);
+                authentication(username, password, level);
             }
             setLoading(false);
         }, 2000);

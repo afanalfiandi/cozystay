@@ -1,17 +1,29 @@
-import { Modal, ActivityIndicator, TextInput, Image, StyleSheet, ScrollView, StatusBar, TouchableOpacity, Text, View, Dimensions, BackHandler } from 'react-native'
+import { Modal, ActivityIndicator, TextInput, Image, StyleSheet, ScrollView, StatusBar, TouchableOpacity, Text, View, Dimensions, BackHandler, ToastAndroid } from 'react-native'
 import React, { useState } from 'react'
 import { globalColor } from '../style/globalColor';
 import { globalStyle } from '../style/globalStyle';
 import { useFonts, Poppins_400Regular, Poppins_400Regular_Italic, Poppins_600SemiBold, Poppins_600SemiBold_Italic, Poppins_700Bold, Poppins_700Bold_Italic } from '@expo-google-fonts/poppins';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { RadioButton, Checkbox } from 'react-native-paper';
+import registerCustomer from '../function/registerCustomer';
 
-const RegisterUser = ({ route }) => {
+const RegisterCustomer = ({ route }) => {
   const navigation = useNavigation();
   const lvl = route.params.level;
   const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState(false);
   const [refresh, setRefresh] = useState(Math.random());
+
+  const [namaDepan, setNamaDepan] = useState();
+  const [namaBelakang, setNamaBelakang] = useState();
+  const [whatsapp, setWhatsapp] = useState();
+  const [email, setEmail] = useState();
+  const [alamat, setAlamat] = useState();
+  const [username, setUsername] = useState();
+  const [jk, setJk] = useState(1);
+  const [password, setPassword] = useState();
+  const [confirmPassword, setConfirmPassword] = useState();
+
 
   useFocusEffect(
     React.useCallback(() => {
@@ -27,7 +39,6 @@ const RegisterUser = ({ route }) => {
       return () => backHandler.remove();
     }, [refresh]));
 
-  const [jk, setJk] = useState(1);
   let [fontsLoaded, fontError] = useFonts({
     Poppins_400Regular, Poppins_400Regular_Italic, Poppins_600SemiBold, Poppins_600SemiBold_Italic, Poppins_700Bold, Poppins_700Bold_Italic
   });
@@ -42,9 +53,29 @@ const RegisterUser = ({ route }) => {
 
   const onSubmit = () => {
     setLoading(!loading);
+
     setTimeout(() => {
+      if (password == confirmPassword) {
+        registerCustomer(
+          namaDepan,
+          namaBelakang,
+          whatsapp,
+          email,
+          username,
+          alamat,
+          jk,
+          password).then((result) => {
+            if (result.status == 1) {
+              ToastAndroid.show('Berhasil!', 3000);
+              navigation.navigate('Auth');
+            } else {
+              ToastAndroid.show('Gagal!', 3000);
+            }
+          })
+      } else {
+        ToastAndroid.show('Kata sandi tidak sesuai!', 3000);
+      }
       setLoading(false);
-      navigation.navigate('Auth');
     }, 2000);
   }
   return (
@@ -77,28 +108,35 @@ const RegisterUser = ({ route }) => {
           <View>
             <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Nama Depan</Text>
             <View style={[globalStyle.formGroup, globalStyle.input]}>
-              <TextInput placeholder='Masukkan nama depan Anda' style={[globalStyle.inputText, styles.regular]} />
+              <TextInput value={namaDepan} onChangeText={setNamaDepan} placeholder='Masukkan nama depan Anda' style={[globalStyle.inputText, styles.regular]} />
             </View>
           </View>
 
           <View>
             <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Nama Belakang</Text>
             <View style={[globalStyle.formGroup, globalStyle.input]}>
-              <TextInput placeholder='Masukkan belakang Anda' style={[globalStyle.inputText, styles.regular]} />
+              <TextInput value={namaBelakang} onChangeText={setNamaBelakang} placeholder='Masukkan belakang Anda' style={[globalStyle.inputText, styles.regular]} />
             </View>
           </View>
 
           <View>
             <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>No. Telepon/Whatsapp</Text>
             <View style={[globalStyle.formGroup, globalStyle.input]}>
-              <TextInput placeholder='Masukkan no. telepon/whatsapp Anda' style={[globalStyle.inputText, styles.regular]} />
+              <TextInput value={whatsapp} onChangeText={setWhatsapp} placeholder='Diawali dengan 628xxxx' style={[globalStyle.inputText, styles.regular]} />
+            </View>
+          </View>
+
+          <View>
+            <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Username</Text>
+            <View style={[globalStyle.formGroup, globalStyle.input]}>
+              <TextInput value={username} onChangeText={setUsername} placeholder='Masukkan username Anda' style={[globalStyle.inputText, styles.regular]} />
             </View>
           </View>
 
           <View>
             <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>E-mail</Text>
             <View style={[globalStyle.formGroup, globalStyle.input]}>
-              <TextInput placeholder='Masukkan e-mail Anda' style={[globalStyle.inputText, styles.regular]} />
+              <TextInput value={email} onChangeText={setEmail} placeholder='Masukkan e-mail Anda' style={[globalStyle.inputText, styles.regular]} />
             </View>
           </View>
 
@@ -138,21 +176,21 @@ const RegisterUser = ({ route }) => {
           <View>
             <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Alamat</Text>
             <View style={[globalStyle.formGroup, globalStyle.input]}>
-              <TextInput placeholder='Masukkan alamat lengkap' style={[globalStyle.inputText, styles.regular, { height: 100 }]} />
+              <TextInput value={alamat} onChangeText={setAlamat} placeholder='Masukkan alamat lengkap' style={[globalStyle.inputText, styles.regular, { height: 100 }]} />
             </View>
           </View>
 
           <View>
             <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Kata Sandi</Text>
             <View style={[globalStyle.formGroup, globalStyle.input]}>
-              <TextInput secureTextEntry placeholder='Masukkan kata sandi' style={[globalStyle.inputText, styles.regular]} />
+              <TextInput value={password} onChangeText={setPassword} secureTextEntry placeholder='Masukkan kata sandi' style={[globalStyle.inputText, styles.regular]} />
             </View>
           </View>
 
           <View>
             <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Konfirmasi Kata Sandi</Text>
             <View style={[globalStyle.formGroup, globalStyle.input]}>
-              <TextInput secureTextEntry placeholder='Masukkan ulang kata sandi' style={[globalStyle.inputText, styles.regular]} />
+              <TextInput value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry placeholder='Masukkan ulang kata sandi' style={[globalStyle.inputText, styles.regular]} />
             </View>
           </View>
 
@@ -176,7 +214,7 @@ const RegisterUser = ({ route }) => {
   )
 }
 
-export default RegisterUser
+export default RegisterCustomer
 
 const styles = StyleSheet.create({
   regular: {
@@ -198,7 +236,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins_700Bold_Italic'
   },
   header: {
-    marginTop: Dimensions.get("screen").width / 1.2,
+    marginTop: Dimensions.get("screen").width / 1.3,
     // marginTop: 100,
     marginBottom: 15,
     flexDirection: 'row',

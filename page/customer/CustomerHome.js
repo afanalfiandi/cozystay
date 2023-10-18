@@ -1,4 +1,4 @@
-import { ActivityIndicator, Alert, BackHandler, FlatList, Modal, Image, StyleSheet, ScrollView, StatusBar, TouchableOpacity, Text, View, SafeAreaView, Dimensions, Touchable } from 'react-native'
+import { RefreshControl, PermissionsAndroid, ActivityIndicator, Alert, BackHandler, FlatList, Modal, Image, StyleSheet, ScrollView, StatusBar, TouchableOpacity, Text, View, SafeAreaView, Dimensions, Touchable, ToastAndroid } from 'react-native'
 import React, { useState } from 'react'
 import { globalStyle } from '../../style/globalStyle';
 import { globalColor } from '../../style/globalColor';
@@ -9,15 +9,72 @@ import SkeletonList from '../../component/SkeletonList';
 import SkeletonCard from '../../component/SkeletonCard';
 import { Avatar, Button, Card } from 'react-native-paper';
 import CustomerTab from '../../component/CustomerTab';
+import getUser from '../../function/getUser';
+import getKos from '../../function/getKos';
+import Empty from '../../component/Empty';
+import { dirUrl } from '../../config/baseUrl';
+import Rupiah from '../../component/Rupiah';
+import getNearestKos from '../../function/getNearestKos';
+import * as Location from 'expo-location';
 
 const CustomerHome = () => {
   const navigation = useNavigation();
   const [loading, setLoading] = useState(true);
   const [refresh, setRefresh] = useState(Math.random());
+  const [userData, setUserData] = useState([]);
+  const [newest, setNewest] = useState([]);
+  const [nearest, setNearest] = useState([]);
+  const [reload, setReload] = useState(false);
+  const [lat, setLat] = useState();
+  const [long, setLong] = useState();
 
+  const getLocation = async () => {
+    const granted = await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
+    );
+
+    if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+      try {
+        let { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          setErrorMsg('Permission to access location was denied');
+          return;
+        }
+
+        let location = await Location.getCurrentPositionAsync({});
+        let lat = location.coords.latitude;
+        let long = location.coords.longitude;
+
+        setLat(lat);
+        setLong(long);
+      } catch (error) {
+        console.log(error)
+        ToastAndroid.show("Koneksi bermasalah!", 3000);
+      }
+    }
+  }
   useFocusEffect(
     React.useCallback(() => {
-      getData();
+      getUser().then(result => {
+        setUserData(result);
+      });
+
+      getKos().then((result) => {
+        if (result.status != 0) {
+          setNewest(result);
+        }
+      })
+
+      getLocation();
+
+      getNearestKos(lat, long).then((result) => {
+        if (result.status != 0) {
+          setNearest(result);
+        }
+      })
+      setTimeout(() => {
+        setLoading(false);
+      }, 3000);
       const backAction = () => {
         Alert.alert("", "Apakah Anda yakin ingin keluar dari aplikasi?", [
           {
@@ -122,53 +179,40 @@ const CustomerHome = () => {
     },
   ];
 
-  const getData = async () => {
-    setTimeout(() => {
-      setLoading(false);
-    }, 2000);
+
+
+  const onView = async (id) => {
+    navigation.navigate('CustomerView', {
+      id: id
+    });
   }
 
-  const onDelete = () => {
-    Alert.alert("", "Apakah Anda yakin ingin menghapus data?", [
-      {
-        text: "Batal",
-        onPress: () => null,
-        style: "cancel",
-      },
-      {
-        text: "Hapus", onPress: () => {
-        }
-      },
-    ]);
-  }
-
-  const onView = async () => {
-    navigation.navigate('CustomerView');
-  }
-
-  const ItemArround = ({ id, cat, img, name, address, facility, length }) => (
+  const ItemArround = ({ jenis_kos, jarak, nama_kos, harga, jenis_sewa, id, img, alamat, label }) => (
     <View key={id} style={globalStyle.cardContainer}>
       <Card style={globalStyle.card}>
-        <Card.Cover source={img} />
+        <Card.Cover source={{ uri: dirUrl + 'kos/' + img }} />
         <Card.Content >
           <View style={[globalStyle.listHeader, { marginVertical: 10 }]}>
             <View style={[globalStyle.listCategoryContainer, { borderWidth: 0.5 }]}>
-              <Text style={[globalStyle.textSm, styles.regular, globalStyle.headerTxt]}>{cat}</Text>
+              <Text style={[globalStyle.textSm, styles.regular, globalStyle.headerTxt]}>{jenis_kos}</Text>
             </View>
-            <Text style={[globalStyle.textSm, styles.bold, globalStyle.headerTxt]}>100 Meter</Text>
+            <Text style={[globalStyle.textSm, styles.bold, globalStyle.headerTxt]}>{jarak} Meter</Text>
           </View>
-          <Text style={[globalStyle.text, styles.semiBold]}>{name}</Text>
+          <Text style={[globalStyle.text, styles.semiBold]}>{nama_kos}</Text>
           <View style={globalStyle.listAddressContainer}>
             <Image style={{ marginRight: 5 }} source={require('../../assets/icon/location-sm.png')} />
-            <Text style={[globalStyle.textSm, styles.bold, { flex: 1 }]}>{address}</Text>
+            <Text style={[globalStyle.textSm, styles.bold, { flex: 1 }]}>{alamat}</Text>
           </View>
         </Card.Content>
       </Card>
       <Card.Actions style={{ width: '100%', position: 'absolute', flex: 1, bottom: 0 }}>
         <View style={[globalStyle.listHeader, { flex: 1 }]}>
-          <Text style={[globalStyle.textSm, styles.bold]}>Rp. 500.000/bulan</Text>
+          <View style={[globalStyle.spaceBetween, { alignItems: 'center' }]}>
+            <Rupiah numb={harga} />
+            <Text style={[globalStyle.textSm, styles.regular]}>/{label}</Text>
+          </View>
           <View style={globalStyle.listBtnHeaderContainer}>
-            <TouchableOpacity style={[globalStyle.headerBtn, { backgroundColor: globalColor.primary }]} onPress={onView}>
+            <TouchableOpacity style={[globalStyle.headerBtn, { backgroundColor: globalColor.primary }]} onPress={() => { onView(id) }}>
               <Image source={require('../../assets/icon/eye-white.png')} />
             </TouchableOpacity>
           </View>
@@ -185,15 +229,32 @@ const CustomerHome = () => {
     return null;
   }
 
+  const onRefresh = () => {
+    setReload(true);
+    setLoading(true);
+    setTimeout(() => {
+      setReload(false);
+      setLoading(false);
+    }, 3000);
+  }
   return (
     <View>
+      <StatusBar
+        animated={true}
+        backgroundColor={globalColor.white}
+        barStyle='dark-content'
+      />
       <ScrollView contentContainerStyle={{
         borderWidth: 0,
         backgroundColor: 'white',
         padding: 25,
-      }} style={[{ marginBottom: 10, paddingBottom: 10 }]}>
+      }} style={[{ marginBottom: 0, paddingBottom: 50 }]} refreshControl={
+        <RefreshControl refreshing={loading} onRefresh={() => {
+          setRefresh(Math.random())
+        }} />
+      }>
         <View style={styles.header}>
-          <Text style={[globalStyle.text, styles.semiBold]}>Hai, username</Text>
+          <Text style={[globalStyle.text, styles.semiBold]}>Hai, {userData.nama_depan}</Text>
           <View style={globalStyle.spaceBetween}>
             {/* <TouchableOpacity style={[globalStyle.rightBtnTop, { marginRight: 7 }]} onPress={() => {
               navigation.navigate('CustomerNotification');
@@ -222,74 +283,81 @@ const CustomerHome = () => {
           </View> */}
 
           <Text style={[globalStyle.h1, styles.bold, { color: globalColor.dark }]}>Disekitarmu</Text>
-          {!loading && (
+
+          {!loading && nearest.length > 0 && (
             <FlatList
               horizontal
               contentContainerStyle={{ paddingBottom: 10 }}
-              data={DATA}
-              renderItem={({ item }) => <ItemArround cat={item.cat} id={item.id} img={item.img} name={item.name} address={item.address} facility={item.fac} length={DATA.length} />}
+              data={nearest}
+              renderItem={({ item }) => <ItemArround jenis_kos={item.jenis_kos} jarak={item.jarak} nama_kos={item.nama_kos} harga={item.harga} jenis_sewa={item.jenis_sewa} id={item.kos_id} img={item.img} alamat={item.alamat} label={item.label} />}
               keyExtractor={(item, index) => {
-                return item.id;
+                return index;
               }}
             />
           )}
+
+          {!loading && nearest.length <= 0 && (
+            <Empty />
+          )}
+
 
           {loading && (
             <SkeletonCard />
           )}
 
-
-
           <Text style={[globalStyle.h1, styles.bold, { color: globalColor.dark, marginTop: 15 }]}>Terbaru</Text>
           {loading && (
             <SkeletonList />
           )}
-          {!loading && DATA.map((item) => {
+          {!loading && newest.length > 0 && newest.map((item, index) => {
             return (
-              <View style={globalStyle.listContainer} key={item.id}>
-                <View style={[globalStyle.listCol, globalStyle.listColImg]}>
-                  <Image style={globalStyle.listImg} source={item.img} />
-                </View>
-                <View style={globalStyle.listCol}>
-                  <View style={globalStyle.listHeader}>
-                    <View style={globalStyle.listCategoryContainer}>
-                      <Text style={[globalStyle.textSm, styles.regular, globalStyle.headerTxt]}>{item.cat}</Text>
-                    </View>
-                    <View style={globalStyle.listBtnHeaderContainer}>
-                      <TouchableOpacity style={[globalStyle.headerBtn, { backgroundColor: globalColor.primary }]} onPress={onView}>
-                        <Image source={require('../../assets/icon/eye-white.png')} />
-                      </TouchableOpacity>
-                    </View>
+              <View key={index}>
+                <View style={[globalStyle.listContainer]}>
+                  <View style={[globalStyle.listCol, globalStyle.listColImg]}>
+                    <Image style={globalStyle.listImg} source={{ uri: dirUrl + 'kos/' + item.img }} />
                   </View>
+                  <View style={globalStyle.listCol}>
+                    <View style={globalStyle.listHeader}>
+                      <View style={globalStyle.listCategoryContainer}>
+                        <Text style={[globalStyle.textSm, styles.regular, globalStyle.headerTxt]}>{item.jenis_kos}</Text>
+                      </View>
+                      <View style={globalStyle.listBtnHeaderContainer}>
+                        <TouchableOpacity style={[globalStyle.headerBtn, { backgroundColor: globalColor.primary }]} onPress={() => { onView(item.kos_id) }}>
+                          <Image source={require('../../assets/icon/eye-white.png')} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
 
-                  <View style={globalStyle.listContent}>
-                    <Text style={[globalStyle.text, styles.semiBold]}>{item.name}</Text>
-                    <View style={globalStyle.listAddressContainer}>
-                      <Image style={{ marginRight: 5 }} source={require('../../assets/icon/location-sm.png')} />
-                      <Text style={[globalStyle.textSm, styles.regular]}>{item.address}</Text>
-                    </View>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'flex-start' }}>
-                      {item.fac.map((val, index) => {
-                        return (
-                          <View style={globalStyle.facilityContainer} key={index}>
-                            <Text style={[globalStyle.textSm, styles.regular, globalStyle.headerTxt]}>{val.facility} </Text>
-                          </View>
-                        )
-                      })}
-                    </View>
-                    <View style={globalStyle.costContainer}>
-                      <Text style={[globalStyle.textSm, styles.bold]}>Rp. 500.000</Text>
-                      <Text style={[globalStyle.textSm, styles.regular]}>/bulan</Text>
+                    <View style={globalStyle.listContent}>
+                      <Text style={[globalStyle.text, styles.semiBold]}>{item.nama_kos}</Text>
+                      <View style={globalStyle.listAddressContainer}>
+                        <Image style={{ marginRight: 5 }} source={require('../../assets/icon/location-sm.png')} />
+                        <Text style={[globalStyle.textSm, styles.regular]}>{item.alamat}</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'flex-start' }}>
+                        <View style={globalStyle.facilityContainer}>
+                          <Text style={[globalStyle.textSm, styles.regular, globalStyle.headerTxt]}>{item.fasilitas} </Text>
+                        </View>
+                      </View>
+                      <View style={[globalStyle.costContainer, { alignItems: 'center' }]}>
+                        <Rupiah numb={item.harga} />
+                        <Text style={[globalStyle.textSm, styles.regular]}>/{item.label}</Text>
+                      </View>
                     </View>
                   </View>
                 </View>
+                <View style={globalStyle.divider}></View>
               </View>
             )
           })}
+
+          {!loading && newest.length <= 0 && (
+            <Empty />
+          )}
         </View>
-      </ScrollView>
+      </ScrollView >
       <CustomerTab />
-    </View>
+    </View >
   )
 }
 

@@ -59,6 +59,15 @@ const OwnerTab = () => {
 export default OwnerTab
 
 const globalStyle = StyleSheet.create({
+    container: {
+        width: Dimensions.get('screen').width,
+        height: 50,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'transparent',
+        position: 'absolute',
+        bottom: 17
+    },
     bottomTabContainer: {
         height: 50,
         borderRadius: 10,
@@ -79,7 +88,7 @@ const globalStyle = StyleSheet.create({
         elevation: 10
     },
     bottomTabBtn: {
-        width: '33%',
+        width: '25%',
         justifyContent: 'center',
         alignItems: 'center',
     },

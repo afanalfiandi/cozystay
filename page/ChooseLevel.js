@@ -38,7 +38,7 @@ const ChooseLevel = () => {
 
     const onSubmit = (level) => {
         if (level == 1) {
-            navigation.navigate('RegisterUser', {
+            navigation.navigate('RegisterCustomer', {
                 level: level
             })
         } else {

@@ -9,7 +9,15 @@ import SkeletonList from '../../component/SkeletonList';
 import SkeletonCard from '../../component/SkeletonCard';
 import { Avatar, Button, Card } from 'react-native-paper';
 import CustomerTab from '../../component/CustomerTab';
+import Rupiah from '../../component/Rupiah';
 import { RadioButton, Checkbox } from 'react-native-paper';
+import getKos from '../../function/getKos';
+import getJenisKos from '../../function/getJenisKos';
+import getJenisSewa from '../../function/getJenisSewa';
+import getFasilitas from '../../function/getFasilitas';
+import { dirUrl } from '../../config/baseUrl';
+import searchKos from '../../function/searchKos';
+import EmptyData from '../../component/EmptyData';
 
 const CustomerHome = () => {
   const drawer = useRef(null);
@@ -17,149 +25,65 @@ const CustomerHome = () => {
   const [loading, setLoading] = useState(true);
   const [modalFilter, setModalFilter] = useState(false);
   const [refresh, setRefresh] = useState(Math.random());
-  const [jk, setJk] = useState(1);
-  const [wifi, setWifi] = useState(false);
-  const [km, setKM] = useState(false);
-  const [listrik, setListrik] = useState(false);
-  const [dapur, setDapur] = useState(false);
-  const [parkir, setParkir] = useState(false);
-  const [ac, setAC] = useState(false);
+
+  const [dataJenisKos, setDataJenisKos] = useState([]);
+  const [dataJenisSewa, setDataJenisSewa] = useState([]);
+  const [dataFasilitas, setDataFasilitas] = useState([]);
+
+
+  const [jenisKos, setJenisKos] = useState(1);
+  const [jenisSewa, setJenisSewa] = useState(1);
+  const [hargaMulai, setHargaMulai] = useState('');
+  const [hargaAkhir, setHargaAkhir] = useState('');
+
+  const [data, setData] = useState([]);
+
   const [fasilitas, setFasilitas] = useState([]);
 
   const addFacility = (value) => {
-    fasilitas.push(value);
-    setFasilitas(fasilitas);
+    if (fasilitas.includes(value)) {
+      const index = fasilitas.indexOf(value);
+      if (index !== -1) {
+        const arr = [...fasilitas];
+        arr.splice(index, 1);
+        setFasilitas(arr);
+      }
+    } else {
+      const arr = [...fasilitas];
+      arr.push(value);
+      setFasilitas(arr);
+    }
   }
 
   useFocusEffect(
     React.useCallback(() => {
-      getData();
-      const backAction = () => {
-        Alert.alert("", "Apakah Anda yakin ingin keluar dari aplikasi?", [
-          {
-            text: "Batal",
-            onPress: () => null,
-            style: "cancel",
-          },
-          { text: "Keluar", onPress: () => BackHandler.exitApp() },
-        ]);
-        return true;
-      };
+      setTimeout(() => {
+        getKos().then((result) => {
+          if (result[0].status == 1) {
+            setData(result);
+          }
+        })
 
-      const backHandler = BackHandler.addEventListener(
-        "hardwareBackPress",
-        backAction
-      );
-      return () => backHandler.remove();
+        getJenisKos().then((result) => {
+          setDataJenisKos(result);
+        });
+
+        getJenisSewa().then((result) => {
+          setDataJenisSewa(result);
+        })
+
+        getFasilitas().then((result) => {
+
+          setDataFasilitas(result);
+        })
+        setLoading(false);
+      }, 3000);
     }, [refresh]));
 
-  const DATA = [
-    {
-      id: '1',
-      cat: 'Putra',
-      img: require('../../assets/kost/potrait-1.png'),
-      name: 'The Retro Residence',
-      address: 'Jl. Jendral Soedirman No. 17',
-      fac: [
-        { facility: 'Kamar mandi dalam' },
-        { facility: 'AC' },
-        { facility: 'Wi-Fi' },
-        { facility: 'Listrik' },
-        { facility: 'PDAM' },
-        { facility: 'Dapur bersama' },
-      ]
-    },
-    {
-      id: '2',
-      cat: 'Putri',
-      img: require('../../assets/kost/potrait-2.png'),
-      name: 'Bauhaus Kost',
-      address: 'Jl. Jendral Sunan Bonang No. 19, Desa Pekuncen, Kec. Pekuncen, Kab. Banyumas',
-      fac: [
-        { facility: 'Kamar mandi dalam' },
-        { facility: 'AC' },
-      ]
-    },
-    {
-      id: '3',
-      cat: 'Putra',
-      img: require('../../assets/kost/potrait-3.png'),
-      name: 'Oemahku',
-      address: 'Jl. Jendral Soedirman No. 17',
-      fac: [
-        { facility: 'Kamar mandi dalam' },
-        { facility: 'AC' },
-        { facility: 'Wi-Fi' },
-        { facility: 'Listrik' },
-        { facility: 'PDAM' },
-        { facility: 'Dapur bersama' },
-      ]
-    },
-    {
-      id: '4',
-      cat: 'Putra',
-      img: require('../../assets/kost/potrait-1.png'),
-      name: 'The Retro Residence',
-      address: 'Jl. Jendral Soedirman No. 17',
-      fac: [
-        { facility: 'Kamar mandi dalam' },
-        { facility: 'AC' },
-        { facility: 'Wi-Fi' },
-        { facility: 'Listrik' },
-        { facility: 'PDAM' },
-        { facility: 'Dapur bersama' },
-      ]
-    },
-    {
-      id: '5',
-      cat: 'Putri',
-      img: require('../../assets/kost/potrait-2.png'),
-      name: 'Bauhaus Kost',
-      address: 'Jl. Jendral Sunan Bonang No. 19, Desa Pekuncen',
-      fac: [
-        { facility: 'Kamar mandi dalam' },
-        { facility: 'AC' },
-      ]
-    },
-    {
-      id: '6',
-      cat: 'Putra',
-      img: require('../../assets/kost/potrait-3.png'),
-      name: 'Oemahku',
-      address: 'Jl. Jendral Soedirman No. 17',
-      fac: [
-        { facility: 'Kamar mandi dalam' },
-        { facility: 'AC' },
-        { facility: 'Wi-Fi' },
-        { facility: 'Listrik' },
-        { facility: 'PDAM' },
-        { facility: 'Dapur bersama' },
-      ]
-    },
-  ];
-
-  const getData = async () => {
-    setTimeout(() => {
-      setLoading(false);
-    }, 2000);
-  }
-
-  const onDelete = () => {
-    Alert.alert("", "Apakah Anda yakin ingin menghapus data?", [
-      {
-        text: "Batal",
-        onPress: () => null,
-        style: "cancel",
-      },
-      {
-        text: "Hapus", onPress: () => {
-        }
-      },
-    ]);
-  }
-
-  const onView = async () => {
-    navigation.navigate('CustomerView');
+  const onView = async (id) => {
+    navigation.navigate('CustomerView', {
+      id: id
+    });
   }
 
   let [fontsLoaded, fontError] = useFonts({
@@ -174,6 +98,7 @@ const CustomerHome = () => {
     drawer.current.closeDrawer()
     setLoading(!loading);
     setTimeout(() => {
+      onSearch('');
       setLoading(false);
     }, 2000);
   }
@@ -190,151 +115,72 @@ const CustomerHome = () => {
 
       <View>
         <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Jenis Kos</Text>
-        <View style={[globalStyle.radioContainer, { flexWrap: 'wrap' }]}>
-          <View style={[globalStyle.radio, { width: '50%' }]}>
-            <RadioButton
-              value="1"
-              status={jk === 1 ? 'checked' : 'unchecked'}
-              onPress={() => {
-                setJk(1);
-              }}
-            />
-            <Text style={styles.regular}>Laki-laki</Text>
-          </View>
-          <View style={[globalStyle.radio, { width: '50%' }]}>
-            <RadioButton
-              value="2"
-              status={jk === 2 ? 'checked' : 'unchecked'}
-              onPress={() => {
-                setJk(2);
-              }}
-            />
-            <Text style={styles.regular}>Perempuan</Text>
-          </View>
-          <View style={[globalStyle.radio, { width: '50%' }]}>
-            <RadioButton
-              value="3"
-              status={jk === 3 ? 'checked' : 'unchecked'}
-              onPress={() => {
-                setJk(3);
-              }}
-            />
-            <Text style={styles.regular}>Campur</Text>
-          </View>
+        <View style={[globalStyle.radioContainer, { flexWrap: 'wrap' }]} >
+          {dataJenisKos.map((item, index) => {
+            return (
+              <View style={[globalStyle.radio, { width: '50%' }]} key={index}>
+                <RadioButton
+                  value={item.id_jenis_kos}
+                  status={jenisKos === item.id_jenis_kos ? 'checked' : 'unchecked'}
+                  onPress={() => {
+                    setJenisKos(item.id_jenis_kos);
+                  }}
+                />
+                <Text style={styles.regular}>{item.jenis_kos}</Text>
+              </View>
+            )
+          })}
         </View>
       </View>
 
       <View>
         <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Fasilitas</Text>
         <View style={[globalStyle.radioContainer, { flexWrap: 'wrap' }]}>
-          <View style={[globalStyle.radio, { width: '50%' }]}>
-            <Checkbox
-              status={wifi ? 'checked' : 'unchecked'}
-              onPress={() => {
-                setWifi(!wifi);
-                addFacility(1)
-              }}
-            />
-            <Text style={styles.regular}>Wifi</Text>
-          </View>
-          <View style={[globalStyle.radio, { width: '50%' }]}>
-            <Checkbox
-              status={km ? 'checked' : 'unchecked'}
-              onPress={() => {
-                setKM(!km);
-                addFacility(2)
-              }}
-            />
-            <Text style={styles.regular}>KM Dalam</Text>
-          </View>
-          <View style={[globalStyle.radio, { width: '50%' }]}>
-            <Checkbox
-              status={listrik ? 'checked' : 'unchecked'}
-              onPress={() => {
-                setListrik(!listrik);
-                addFacility(3)
-              }}
-            />
-            <Text style={styles.regular}>Listrik</Text>
-          </View>
-          <View style={[globalStyle.radio, { width: '50%' }]}>
-            <Checkbox
-              status={dapur ? 'checked' : 'unchecked'}
-              onPress={() => {
-                setDapur(!dapur);
-                addFacility(4)
-              }}
-            />
-            <Text style={styles.regular}>Dapur Bersama</Text>
-          </View>
-          <View style={[globalStyle.radio, { width: '50%' }]}>
-            <Checkbox
-              status={parkir ? 'checked' : 'unchecked'}
-              onPress={() => {
-                setParkir(!parkir);
-                addFacility(4)
-              }}
-            />
-            <Text style={styles.regular}>Parkir Mobil</Text>
-          </View>
+          {dataFasilitas.map((item, index) => {
+            return (
+              <View style={[globalStyle.radio, { width: '50%' }]} key={index}>
+                <Checkbox
+                  status={fasilitas.includes(parseInt(item.id_fasilitas)) ? 'checked' : 'unchecked'}
+                  onPress={() => {
+                    // setWifi(!wifi);
+                    addFacility(parseInt(item.id_fasilitas))
+                  }}
+                />
+                <Text style={styles.regular}>{item.fasilitas}</Text>
+              </View>
+            )
+          })}
         </View>
       </View>
 
       <View>
         <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Jenis Sewa Kos</Text>
         <View style={[globalStyle.radioContainer, { flexWrap: 'wrap' }]}>
-          <View style={[globalStyle.radio, { width: '50%' }]}>
-            <RadioButton
-              value="1"
-              status={jk === 1 ? 'checked' : 'unchecked'}
-              onPress={() => {
-                setJk(1);
-              }}
-            />
-            <Text style={styles.regular}>Harian</Text>
-          </View>
-          <View style={[globalStyle.radio, { width: '50%' }]}>
-            <RadioButton
-              value="2"
-              status={jk === 2 ? 'checked' : 'unchecked'}
-              onPress={() => {
-                setJk(2);
-              }}
-            />
-            <Text style={styles.regular}>Mingguan</Text>
-          </View>
-          <View style={[globalStyle.radio, { width: '50%' }]}>
-            <RadioButton
-              value="3"
-              status={jk === 3 ? 'checked' : 'unchecked'}
-              onPress={() => {
-                setJk(3);
-              }}
-            />
-            <Text style={styles.regular}>Bulanan</Text>
-          </View>
-          <View style={[globalStyle.radio, { width: '50%' }]}>
-            <RadioButton
-              value="3"
-              status={jk === 3 ? 'checked' : 'unchecked'}
-              onPress={() => {
-                setJk(3);
-              }}
-            />
-            <Text style={styles.regular}>Tahunan</Text>
-          </View>
+          {dataJenisSewa.map((item, index) => {
+            return (
+              <View style={[globalStyle.radio, { width: '50%' }]} key={index}>
+                <RadioButton
+                  value={item.id_jenis_sewa}
+                  status={jenisSewa === item.id_jenis_sewa ? 'checked' : 'unchecked'}
+                  onPress={() => {
+                    setJenisSewa(item.id_jenis_sewa);
+                  }}
+                />
+                <Text style={styles.regular}>{item.jenis_sewa}</Text>
+              </View>
+            )
+          })}
         </View>
       </View>
-
       <View>
         <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Harga (Rp. )</Text>
         <View style={globalStyle.costFilterContainer}>
           <View style={[globalStyle.formGroup, globalStyle.input, { width: '48%' }]}>
-            <TextInput placeholder='MIN' style={[globalStyle.inputText, styles.regular]} />
+            <TextInput placeholder='MIN' style={[globalStyle.inputText, styles.regular]} value={hargaMulai} onChangeText={setHargaMulai} />
           </View>
           <Text style={styles.bold}>-</Text>
           <View style={[globalStyle.formGroup, globalStyle.input, { width: '48%' }]}>
-            <TextInput placeholder='MAX' style={[globalStyle.inputText, styles.regular]} />
+            <TextInput placeholder='MAX' style={[globalStyle.inputText, styles.regular]} value={hargaAkhir} onChangeText={setHargaAkhir} />
           </View>
         </View>
       </View>
@@ -351,18 +197,34 @@ const CustomerHome = () => {
       </View>
     </View >
   );
+
+  const onSearch = (text) => {
+    setLoading(true);
+    setTimeout(() => {
+      searchKos(text).then((result) => {
+
+
+        if (result.status != 0) {
+          setData(result);
+        }
+      })
+
+      setLoading(false);
+    }, 1500);
+  }
   return (
-    <DrawerLayoutAndroid
-      ref={drawer}
-      drawerWidth={300}
-      drawerPosition={'right'}
-      renderNavigationView={navigationView}
-    >
+    <View>
+      <StatusBar
+        animated={true}
+        backgroundColor={globalColor.white}
+        barStyle='dark-content'
+      />
       <ScrollView contentContainerStyle={{
         borderWidth: 0,
         backgroundColor: 'white',
         padding: 25,
-      }} style={[{ marginBottom: 10, paddingBottom: 10 }]}>
+      }
+      } style={[{ marginBottom: 10, paddingBottom: 10 }]} >
         <View style={[styles.header,]}>
           <TouchableOpacity style={globalStyle.leftBtnTop} onPress={() => {
             navigation.goBack();
@@ -375,73 +237,70 @@ const CustomerHome = () => {
         </View>
         <View style={[globalStyle.content, { backgroundColor: 'transparent' }]}>
           <View style={globalStyle.searchForm}>
-            <View style={[globalStyle.formGroup, globalStyle.spaceBetween, globalStyle.input, globalStyle.searchInput, { width: '85%' }]}>
-              <View style={globalStyle.imgInputContainer}>
+            <View style={[globalStyle.formGroup, globalStyle.spaceBetween, globalStyle.input, globalStyle.searchInput, { width: '100%' }]}>
+              <View style={[globalStyle.imgInputContainer]}>
                 <Image resizeMode='contain' style={globalStyle.imgInput} source={require('../../assets/icon/lup-sm-grey.png')} />
               </View>
-              <TextInput placeholder='Cari nama kos...' style={[globalStyle.inputText, styles.regular]} />
+              <TextInput placeholder='Cari nama kos...' onChangeText={text => { onSearch(text) }} style={[globalStyle.inputText, styles.regular]} />
             </View>
-            <TouchableOpacity style={globalStyle.searchBtn} onPress={() => {
+            {/* <TouchableOpacity style={globalStyle.searchBtn} onPress={() => {
               drawer.current.openDrawer()
             }}>
               <Image source={require('../../assets/icon/filter-white.png')} />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
 
-          {loading && (
-            <SkeletonCard />
-          )}
 
-          <Text style={[globalStyle.h1, styles.bold, { color: globalColor.dark, marginTop: 15 }]}>Terbaru</Text>
           {loading && (
             <SkeletonList />
           )}
-          {!loading && DATA.map((item) => {
+          {!loading && data.length > 0 && data.map((item) => {
             return (
-              <View style={globalStyle.listContainer} key={item.id}>
-                <View style={[globalStyle.listCol, globalStyle.listColImg]}>
-                  <Image style={globalStyle.listImg} source={item.img} />
-                </View>
-                <View style={globalStyle.listCol}>
-                  <View style={globalStyle.listHeader}>
-                    <View style={globalStyle.listCategoryContainer}>
-                      <Text style={[globalStyle.textSm, styles.regular, globalStyle.headerTxt]}>{item.cat}</Text>
-                    </View>
-                    <View style={globalStyle.listBtnHeaderContainer}>
-                      <TouchableOpacity style={[globalStyle.headerBtn, { backgroundColor: globalColor.primary }]} onPress={onView}>
-                        <Image source={require('../../assets/icon/eye-white.png')} />
-                      </TouchableOpacity>
-                    </View>
+              <View key={item.kos_id}>
+                <View style={globalStyle.listContainer} >
+                  <View style={[globalStyle.listCol, globalStyle.listColImg]}>
+                    <Image style={globalStyle.listImg} source={{ uri: dirUrl + 'kos/' + item.img }} />
                   </View>
-
-                  <View style={globalStyle.listContent}>
-                    <Text style={[globalStyle.text, styles.semiBold]}>{item.name}</Text>
-                    <View style={globalStyle.listAddressContainer}>
-                      <Image style={{ marginRight: 5 }} source={require('../../assets/icon/location-sm.png')} />
-                      <Text style={[globalStyle.textSm, styles.regular]}>{item.address}</Text>
+                  <View style={globalStyle.listCol}>
+                    <View style={globalStyle.listHeader}>
+                      <View style={globalStyle.listCategoryContainer}>
+                        <Text style={[globalStyle.textSm, styles.regular, globalStyle.headerTxt]}>{item.jenis_kos}</Text>
+                      </View>
+                      <View style={globalStyle.listBtnHeaderContainer}>
+                        <TouchableOpacity style={[globalStyle.headerBtn, { backgroundColor: globalColor.primary }]} onPress={() => { onView(item.kos_id) }}>
+                          <Image source={require('../../assets/icon/eye-white.png')} />
+                        </TouchableOpacity>
+                      </View>
                     </View>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'flex-start' }}>
-                      {item.fac.map((val, index) => {
-                        return (
-                          <View style={globalStyle.facilityContainer} key={index}>
-                            <Text style={[globalStyle.textSm, styles.regular, globalStyle.headerTxt]}>{val.facility} </Text>
-                          </View>
-                        )
-                      })}
-                    </View>
-                    <View style={globalStyle.costContainer}>
-                      <Text style={[globalStyle.textSm, styles.bold]}>Rp. 500.000</Text>
-                      <Text style={[globalStyle.textSm, styles.regular]}>/bulan</Text>
+                    <View style={globalStyle.listContent}>
+                      <Text style={[globalStyle.text, styles.semiBold]}>{item.nama_kos}</Text>
+                      <View style={globalStyle.listAddressContainer}>
+                        <Image style={{ marginRight: 5 }} source={require('../../assets/icon/location-sm.png')} />
+                        <Text style={[globalStyle.textSm, styles.regular]}>{item.alamat}</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'flex-start' }}>
+                        <View style={globalStyle.facilityContainer}>
+                          <Text style={[globalStyle.textSm, styles.regular, globalStyle.headerTxt]}>{item.fasilitas} </Text>
+                        </View>
+                      </View>
+                      <View style={[globalStyle.costContainer, { alignItems: 'center' }]}>
+                        <Rupiah numb={item.harga} />
+                        <Text style={[globalStyle.textSm, styles.regular]}>/{item.label}</Text>
+                      </View>
                     </View>
                   </View>
                 </View>
+                <View style={globalStyle.divider}></View>
               </View>
             )
           })}
+          {!loading && data.length <= 0 && (
+            <EmptyData />
+          )}
         </View>
       </ScrollView>
       <CustomerTab />
-    </DrawerLayoutAndroid >
+    </View>
   )
 }
 
@@ -472,8 +331,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between'
   },
-
-
   container: {
     flex: 1,
     padding: 16,

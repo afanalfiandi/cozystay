@@ -7,7 +7,7 @@ import { useFonts } from 'expo-font';
 import SplashScreen from './page/SplashScreen';
 import OwnerHome from './page/owner/OwnerHome';
 import Auth from './page/Auth';
-import RegisterUser from './page/RegisterUser';
+import RegisterCustomer from './page/RegisterCustomer';
 import RegisterOwner from './page/RegisterOwner';
 import ChooseLevel from './page/ChooseLevel';
 import Add from './page/owner/Add';
@@ -21,12 +21,14 @@ import CustomerSearch from './page/customer/CustomerSearch';
 import CustomerView from './page/customer/CustomerView';
 import CustomerNotification from './page/customer/CustomerNotification';
 import CustomerSewa from './page/customer/CustomerSewa';
-import CustomerSewaDetail from './page/customer/CustomerSewaDetail';
+import CustomerTransaction from './page/customer/CustomerTransaction';
 import CustomerPayment from './page/customer/CustomerPayment';
+import MandiriPayment from './page/customer/MandiriPayment';
 
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import globalColor from './style/globalColor';
+import { navigationRef } from './function/navigationRef';
 
 const App = () => {
   const Tab = createBottomTabNavigator();
@@ -39,7 +41,7 @@ const App = () => {
 
   const level = getLevel();
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <StatusBar
         animated={true}
         backgroundColor={'white'}
@@ -51,7 +53,7 @@ const App = () => {
         <Stack.Screen name="SplashScreen" component={SplashScreen} />
         <Stack.Screen name="Auth" component={Auth} />
         <Stack.Screen name="OwnerHome" component={OwnerHome} />
-        <Stack.Screen name="RegisterUser" component={RegisterUser} />
+        <Stack.Screen name="RegisterCustomer" component={RegisterCustomer} />
         <Stack.Screen name="RegisterOwner" component={RegisterOwner} />
         <Stack.Screen name="ChooseLevel" component={ChooseLevel} />
         <Stack.Screen name="Add" component={Add} />
@@ -65,8 +67,9 @@ const App = () => {
         <Stack.Screen name="CustomerView" component={CustomerView} />
         <Stack.Screen name="CustomerNotification" component={CustomerNotification} />
         <Stack.Screen name="CustomerSewa" component={CustomerSewa} />
-        <Stack.Screen name="CustomerSewaDetail" component={CustomerSewaDetail} />
+        <Stack.Screen name="CustomerTransaction" component={CustomerTransaction} />
         <Stack.Screen name="CustomerPayment" component={CustomerPayment} />
+        <Stack.Screen name="MandiriPayment" component={MandiriPayment} />
       </Stack.Navigator>
     </NavigationContainer>
   )

@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react'
 import { globalColor } from '../style/globalColor';
 import Animated, { withRepeat, useSharedValue, withTiming, useAnimatedStyle, Easing, withSpring } from 'react-native-reanimated';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SplashScreen = () => {
   const [refresh, setRefresh] = useState(Math.random());
@@ -60,8 +61,19 @@ const SplashScreen = () => {
     fSize.value = withSpring(0);
   };
 
-  const navig = () => {
-    navigation.navigate('Auth');
+  const navig = async () => {
+    const isLoggedIn = await AsyncStorage.getItem('loggedIn');
+    const userData = JSON.parse(await AsyncStorage.getItem('userData'));
+    // console.log(userData.id_level);
+    if (isLoggedIn == 'true') {
+      if (userData.id_level == 1) {
+        navigation.navigate('CustomerHome');
+      } else {
+        navigation.navigate('OwnerHome');
+      }
+    } else {
+      navigation.navigate('Auth');
+    }
   }
   return (
     <View style={styles.container}>

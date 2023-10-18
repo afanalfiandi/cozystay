@@ -1,4 +1,4 @@
-import { ActivityIndicator, Alert, BackHandler, FlatList, Modal, Image, StyleSheet, ScrollView, StatusBar, TouchableOpacity, Text, View, SafeAreaView, Dimensions } from 'react-native'
+import { RefreshControl, ActivityIndicator, Alert, BackHandler, FlatList, Modal, Image, StyleSheet, ScrollView, StatusBar, TouchableOpacity, Text, View, SafeAreaView, Dimensions, ToastAndroid } from 'react-native'
 import React, { useState } from 'react'
 import { globalStyle } from '../../style/globalStyle';
 import { globalColor } from '../../style/globalColor';
@@ -9,6 +9,14 @@ import SkeletonList from '../../component/SkeletonList';
 import mime from 'mime';
 import * as ImagePicker from 'expo-image-picker';
 import OwnerTab from '../../component/OwnerTab';
+import getUser from '../../function/getUser';
+import getPaymentModal from '../../function/getPaymentModal';
+import ownerProfile from '../../function/ownerProfile';
+import ownerPass from '../../function/ownerPass';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import profilePict from '../../function/profilePict';
+import logout from '../../function/logout';
+import { dirUrl } from '../../config/baseUrl';
 
 const OwnerProfile = () => {
 
@@ -16,16 +24,74 @@ const OwnerProfile = () => {
     const [modal, setModal] = useState(false);
     const [modalPass, setModalPass] = useState(false);
     const [disabled, setDisabled] = useState(true);
+    const [data, setData] = useState([]);
+    const [payment, setPayment] = useState([]);
+
+    const [username, setUsername] = useState();
+    const [email, setEmail] = useState();
+    const [namaDepan, setNamaDepan] = useState();
+    const [namaBelakang, setNamaBelakang] = useState();
+    const [whatsapp, setWhatsapp] = useState();
+    const [noRekening, setNoRekening] = useState();
     const [bank, setBank] = useState();
-    const [bankLabel, setBankLabel] = useState('Pilih Nama Bank');
+    const [bankLabel, setBankLabel] = useState();
+    const [namaPemilikRekening, setNamaPemilikRekening] = useState();
+
+    const [lama, setLama] = useState();
+    const [baru, setBaru] = useState();
+
     const [loading, setLoading] = useState(false);
     const [refresh, setRefresh] = useState(Math.random());
+
+
     const [uri, seturi] = useState();
     const [name, setname] = useState();
     const [type, settype] = useState();
 
     onSubmit = async () => {
         setLoading(!loading);
+        const id = data.id_user;
+        ownerProfile(id, username, email, namaDepan, namaBelakang, whatsapp, noRekening, bank, namaPemilikRekening).then(async (result) => {
+
+            if (result.status == 1) {
+                const currData = JSON.parse(await AsyncStorage.getItem('userData'));
+                const newData = {
+                    email: email,
+                    id_jenis_pembayaran: bank,
+                    id_level: 2,
+                    id_user: currData.id_user,
+                    img: currData.img,
+                    jenis_pembayaran: currData.jenis_pembayaran,
+                    message: currData.message,
+                    nama_belakang: namaBelakang,
+                    nama_depan: namaDepan,
+                    nama_pemilik_rekening: namaPemilikRekening,
+                    no_rekening: noRekening,
+                    profile_pict: result.img,
+                    status: currData.status,
+                    username: username,
+                    whatsapp: whatsapp
+                };
+
+                AsyncStorage.setItem('userData', JSON.stringify(newData));
+
+                setData(newData);
+
+                setBankLabel(bankLabel);
+                setBank(bank);
+
+                setEmail(email);
+                setUsername(username);
+                setNamaDepan(namaDepan);
+                setNamaBelakang(namaBelakang);
+                setWhatsapp(whatsapp);
+                setNoRekening(noRekening);
+                setNamaPemilikRekening(namaPemilikRekening);
+                ToastAndroid.show('Berhasil!', 3000);
+            } else {
+                ToastAndroid.show('Gagal!', 3000);
+            }
+        });
         setTimeout(() => {
             setLoading(false);
         }, 2000);
@@ -34,8 +100,18 @@ const OwnerProfile = () => {
     const onPass = async () => {
         setLoading(!loading);
         setTimeout(() => {
+            const id = data.id_user;
+            ownerPass(id, lama, baru).then((result) => {
+                if (result.status == 2) {
+                    ToastAndroid.show('Kata sandi tidak sesuai', 3000);
+                } else if (result.status == 0) {
+                    ToastAndroid.show('Gagal!', 3000);
+                } else {
+                    ToastAndroid.show('Berhasil!', 3000);
+                    setModalPass(false);
+                }
+            })
             setLoading(false);
-            setModalPass(false);
         }, 2000);
     }
 
@@ -50,10 +126,44 @@ const OwnerProfile = () => {
             let uri = result.assets[0].uri;
             let name = result.assets[0].uri.split('/').pop();;
             let type = mime.getType(result.assets[0].uri);
+            const id = data.id_user;
+            const level = data.id_level;
 
-            seturi(uri);
-            setname(name);
-            settype(type);
+            profilePict(id, level, uri, name, type).then(async (result) => {
+                if (result.status == 0) {
+                    ToastAndroid.show('Gagal!', 3000);
+                } else {
+                    const currData = JSON.parse(await AsyncStorage.getItem('userData'));
+                    const newData = {
+                        email: currData.email,
+                        id_jenis_pembayaran: currData.id_jenis_pembayaran,
+                        id_level: currData.id_level,
+                        id_user: currData.id_user,
+                        img: currData.img,
+                        jenis_pembayaran: currData.jenis_pembayaran,
+                        message: currData.message,
+                        nama_belakang: currData.nama_belakang,
+                        nama_depan: currData.nama_depan,
+                        nama_pemilik_rekening: currData.nama_pemilik_rekening,
+                        no_rekening: currData.no_rekening,
+                        profile_pict: result.img,
+                        status: currData.status,
+                        username: currData.username,
+                        whatsapp: currData.whatsapp
+                    };
+
+                    AsyncStorage.setItem('userData', JSON.stringify(newData));
+
+                    seturi(uri);
+                    setname(result.img);
+                    settype(type);
+
+                    ToastAndroid.show('Berhasil!', 3000);
+                }
+            });
+
+        } else {
+            return null;
         }
     }
 
@@ -66,13 +176,44 @@ const OwnerProfile = () => {
             },
             {
                 text: "Keluar", onPress: () => {
-                    navigation.navigate('Auth')
+                    logout();
                 }
             },
         ]);
     }
+
+    useFocusEffect(
+        React.useCallback(() => {
+            setLoading(true);
+            getUser().then((result) => {
+                setData(result);
+                setBankLabel(result.jenis_pembayaran);
+                setBank(result.id_jenis_pembayaran);
+
+                setEmail(result.email);
+                setUsername(result.username);
+                setNamaDepan(result.nama_depan);
+                setNamaBelakang(result.nama_belakang);
+                setWhatsapp(result.whatsapp);
+                setNoRekening(result.no_rekening);
+                setNamaPemilikRekening(result.nama_pemilik_rekening);
+                setname(result.profile_pict);
+            });
+
+            getPaymentModal().then((result) => {
+                setPayment(result);
+            })
+            setTimeout(() => {
+                setLoading(false);
+            }, 3000);
+        }, [refresh]));
     return (
         <SafeAreaView style={[globalStyle.container, { paddingHorizontal: 10 }]}>
+            <StatusBar
+                animated={true}
+                backgroundColor={globalColor.white}
+                barStyle='dark-content'
+            />
             <Modal
                 animationType="fade"
                 transparent={true}
@@ -104,13 +245,17 @@ const OwnerProfile = () => {
                             </View>
                         </View>
                         <View style={globalStyle.modalForm}>
-                            <TouchableOpacity style={globalStyle.modalOptBtn} onPress={() => {
-                                setBank(1);
-                                setBankLabel('Mandiri');
-                                setModal(!modal);
-                            }}>
-                                <Text style={styles.regular}>Mandiri</Text>
-                            </TouchableOpacity>
+                            {payment.map((item, index) => {
+                                return (
+                                    <TouchableOpacity style={globalStyle.modalOptBtn} onPress={() => {
+                                        setBank(item.id_jenis_pembayaran);
+                                        setBankLabel(item.jenis_pembayaran);
+                                        setModal(!modal);
+                                    }} key={index}>
+                                        <Text style={styles.regular}>{item.jenis_pembayaran}</Text>
+                                    </TouchableOpacity>
+                                )
+                            })}
                         </View>
                     </View>
                 </View>
@@ -138,13 +283,13 @@ const OwnerProfile = () => {
                             <View>
                                 <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Kata Sandi Sebelumnya</Text>
                                 <View style={[globalStyle.formGroup, globalStyle.input]}>
-                                    <TextInput secureTextEntry placeholder='******' style={[globalStyle.inputText, styles.regular]} />
+                                    <TextInput value={lama} onChangeText={setLama} secureTextEntry placeholder='******' style={[globalStyle.inputText, styles.regular]} />
                                 </View>
                             </View>
                             <View>
-                                <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Nama Belakang</Text>
+                                <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Kata Sandi Baru</Text>
                                 <View style={[globalStyle.formGroup, globalStyle.input]}>
-                                    <TextInput secureTextEntry placeholder='******' style={[globalStyle.inputText, styles.regular]} />
+                                    <TextInput value={baru} onChangeText={setBaru} secureTextEntry placeholder='******' style={[globalStyle.inputText, styles.regular]} />
                                 </View>
                             </View>
                             <View style={[globalStyle.formGroup]}>
@@ -164,11 +309,17 @@ const OwnerProfile = () => {
                     <Text style={[globalStyle.text, styles.bold, { color: globalColor.red }]}>Keluar</Text>
                 </TouchableOpacity>
             </View>
-            <ScrollView contentContainerStyle={[globalStyle.scrollView]}>
-                <View style={globalStyle.profileImgContainer}>
-                    <TouchableOpacity onPress={launchGallery}>
-                        <Image resizeMode='contain' style={globalStyle.profileImg} source={require('../../assets/img/user-default.png')} />
-                    </TouchableOpacity>
+            <ScrollView contentContainerStyle={[globalStyle.scrollView]} refreshControl={
+                <RefreshControl refreshing={loading} onRefresh={() => {
+                    setRefresh(Math.random())
+                }} />
+            }>
+                <View style={{ width: '100%', justifyContent: 'center', alignItems: 'center', }}>
+                    <View style={globalStyle.profileImgContainer}>
+                        <TouchableOpacity onPress={launchGallery}>
+                            <Image resizeMode='contain' style={globalStyle.profileImg} source={{ uri: dirUrl + 'profile_pict/' + name }} />
+                        </TouchableOpacity>
+                    </View>
                 </View>
                 <View style={globalStyle.spaceBetween}>
                     <Text style={[globalStyle.text, styles.bold]}>Data Diri</Text>
@@ -179,27 +330,39 @@ const OwnerProfile = () => {
                     </TouchableOpacity>
                 </View>
                 <View>
+                    <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Username</Text>
+                    <View style={[globalStyle.formGroup, globalStyle.input]}>
+                        <TextInput editable={disabled ? false : true} value={username} onChangeText={setUsername} style={[globalStyle.inputText, styles.regular, { opacity: disabled ? 0.5 : 1 }]} />
+                    </View>
+                </View>
+                <View>
+                    <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Email</Text>
+                    <View style={[globalStyle.formGroup, globalStyle.input]}>
+                        <TextInput editable={disabled ? false : true} value={email} onChangeText={setEmail} style={[globalStyle.inputText, styles.regular, { opacity: disabled ? 0.5 : 1 }]} />
+                    </View>
+                </View>
+                <View>
                     <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Nama Depan</Text>
                     <View style={[globalStyle.formGroup, globalStyle.input]}>
-                        <TextInput editable={disabled ? false : true} placeholder='Masukkan nama depan Anda' style={[globalStyle.inputText, styles.regular, { opacity: disabled ? 0.5 : 1 }]} />
+                        <TextInput editable={disabled ? false : true} value={namaDepan} onChangeText={setNamaDepan} style={[globalStyle.inputText, styles.regular, { opacity: disabled ? 0.5 : 1 }]} />
                     </View>
                 </View>
                 <View>
                     <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Nama Belakang</Text>
                     <View style={[globalStyle.formGroup, globalStyle.input]}>
-                        <TextInput editable={disabled ? false : true} placeholder='Masukkan nama belakang Anda' style={[globalStyle.inputText, styles.regular, { opacity: disabled ? 0.5 : 1 }]} />
+                        <TextInput editable={disabled ? false : true} value={namaBelakang} onChangeText={setNamaBelakang} style={[globalStyle.inputText, styles.regular, { opacity: disabled ? 0.5 : 1 }]} />
                     </View>
                 </View>
                 <View>
                     <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>No. Telepon/Whatsapp</Text>
                     <View style={[globalStyle.formGroup, globalStyle.input]}>
-                        <TextInput editable={disabled ? false : true} placeholder='Masukkan nama belakang Anda' style={[globalStyle.inputText, styles.regular, { opacity: disabled ? 0.5 : 1 }]} />
+                        <TextInput editable={disabled ? false : true} value={whatsapp} onChangeText={setWhatsapp} style={[globalStyle.inputText, styles.regular, { opacity: disabled ? 0.5 : 1 }]} />
                     </View>
                 </View>
                 <View>
                     <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>No. Rekening</Text>
                     <View style={[globalStyle.formGroup, globalStyle.input]}>
-                        <TextInput editable={disabled ? false : true} placeholder='Masukkan no. rekening Anda' style={[globalStyle.inputText, styles.regular, { opacity: disabled ? 0.5 : 1 }]} />
+                        <TextInput editable={disabled ? false : true} value={noRekening} onChangeText={setNoRekening} style={[globalStyle.inputText, styles.regular, { opacity: disabled ? 0.5 : 1 }]} />
                     </View>
                 </View>
                 <View>
@@ -219,7 +382,7 @@ const OwnerProfile = () => {
                 <View>
                     <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Nama Pemilik Rekening</Text>
                     <View style={[globalStyle.formGroup, globalStyle.input]}>
-                        <TextInput editable={disabled ? false : true} placeholder='Masukkan nama pemilik rekening' style={[globalStyle.inputText, styles.regular, { opacity: disabled ? 0.5 : 1 }]} />
+                        <TextInput editable={disabled ? false : true} value={namaPemilikRekening} onChangeText={setNamaPemilikRekening} style={[globalStyle.inputText, styles.regular, { opacity: disabled ? 0.5 : 1 }]} />
                     </View>
                 </View>
 
@@ -229,8 +392,8 @@ const OwnerProfile = () => {
                     </TouchableOpacity>
                 </View>
 
-                <View style={[globalStyle.divider,{marginBottom: 1}]}></View>
-                <View style={[globalStyle.formGroup, { paddingBottom: 100 }]}>
+                <View style={[globalStyle.divider, { marginBottom: 1 }]}></View>
+                <View style={[globalStyle.formGroup, { marginBottom: 100 }]}>
                     <View style={[globalStyle.spaceBetween, { justifyContent: 'center' }]}>
                         <Text style={[globalStyle.text, styles.regular]}>Ingin mengubah kata sandi? </Text>
                         <TouchableOpacity onPress={() => {

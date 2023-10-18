@@ -6,15 +6,32 @@ import { TextInput } from 'react-native';
 import { useFonts, Poppins_400Regular, Poppins_400Regular_Italic, Poppins_600SemiBold, Poppins_600SemiBold_Italic, Poppins_700Bold, Poppins_700Bold_Italic } from '@expo-google-fonts/poppins';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { RadioButton, Checkbox } from 'react-native-paper';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import mime from 'mime';
 import { ToastAndroid } from 'react-native';
+import getJenisSewa from '../../function/getJenisSewa';
+import getJenisKos from '../../function/getJenisKos';
+import getFasilitas from '../../function/getFasilitas';
+import addKos from '../../function/addKos';
 
 const Add = () => {
     const navigation = useNavigation();
     const [loading, setLoading] = useState(false);
+
+    const [dataJenisSewa, setDataJenisSewa] = useState([]);
+    const [dataJenisKos, setDataJenisKos] = useState([]);
+    const [dataFasilitas, setDataFasilitas] = useState([]);
+
+    const [namaKos, setNamaKos] = useState('');
+    const [jenisKos, setJenisKos] = useState('');
+    const [alamat, setAlamat] = useState('');
+    const [fasilitas, setFasilitas] = useState([]);
+    const [jenisSewaKos, setJenisSewaKos] = useState('');
+    const [harga, setHarga] = useState('');
+    const [img, setImg] = useState([]);
+
     const getPosition = async () => {
         const granted = await PermissionsAndroid.request(
             PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION
@@ -39,23 +56,31 @@ const Add = () => {
                     longitudeDelta: 0.001,
                 });
 
+                console.log(lat);
             } catch (error) {
-                let text = 'Waiting..';
-                if (errorMsg) {
-                    text = errorMsg;
-                } else if (location) {
-                    text = JSON.stringify(location);
-                }
+                ToastAndroid.show("Koneksi bermasalah!", 3000);
             }
         }
     }
 
     useFocusEffect(
         React.useCallback(() => {
-            getPosition()
-            setTimeout(() => {
-                getPosition()
-            }, 500);
+            getPosition();
+
+            getJenisSewa().then(result => {
+                setDataJenisSewa(result);
+            })
+
+            getJenisKos().then(result => {
+                setDataJenisKos(result);
+            })
+
+            getFasilitas().then(result => {
+                setDataFasilitas(result);
+            })
+            // setTimeout(() => {
+            //     getPosition()
+            // }, 500);
             const backAction = () => {
                 navigation.navigate('OwnerHome')
                 return true;
@@ -69,7 +94,6 @@ const Add = () => {
         }, [refresh]));
 
 
-    const [location, setLocation] = useState(null);
     const [initialRegion, setInitialRegion] = useState({
         latitude: 0,
         longitude: 0,
@@ -80,18 +104,7 @@ const Add = () => {
 
     const [mapModal, setMapModal] = useState(false);
 
-    const [jenisKos, setJenisKos] = useState(1);
-    const [jenisSewaKos, setJenisSewaKos] = useState(1);
 
-    const [wifi, setWifi] = useState(false);
-    const [km, setKM] = useState(false);
-    const [listrik, setListrik] = useState(false);
-    const [dapur, setDapur] = useState(false);
-    const [parkir, setParkir] = useState(false);
-    const [ac, setAC] = useState(false);
-
-    const [fasilitas, setFasilitas] = useState([]);
-    const [img, setImg] = useState([]);
     const [state, setState] = useState(Math.random());
 
     let [fontsLoaded, fontError] = useFonts({
@@ -103,7 +116,18 @@ const Add = () => {
     }
 
     const addFacility = (value) => {
-        fasilitas.push(value);
+        if (fasilitas.includes(value)) {
+            const index = fasilitas.indexOf(value);
+            if (index !== -1) {
+                const arr = [...fasilitas];
+                arr.splice(index, 1);
+                setFasilitas(arr);
+            }
+        } else {
+            const arr = [...fasilitas];
+            arr.push(value);
+            setFasilitas(arr);
+        }
     }
 
     const onBack = () => {
@@ -112,16 +136,22 @@ const Add = () => {
 
     const onSubmit = async () => {
         setLoading(!loading);
+        addKos(namaKos, jenisKos, alamat, fasilitas, jenisSewaKos, harga, initialRegion.latitude, initialRegion.longitude, img)
+            .then(result => {
+                if (result.status == 1) {
+                    ToastAndroid.show('Berhasil', 3000);
+                    navigation.navigate('OwnerHome');
+                } else {
+                    ToastAndroid.show('Gagal', 3000);
+                }
+            });
         setTimeout(() => {
             setLoading(false);
-            navigation.navigate('OwnerHome');
-        }, 2000);
+        }, 3000);
     }
 
     const openGallery = async () => {
         if (img.length < 5) {
-
-
             let result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ImagePicker.MediaTypeOptions.Images,
                 // allowsEditing: true,
@@ -164,9 +194,22 @@ const Add = () => {
         )
     })
 
+    const onRegionChangeComplete = (region) => {
+        setInitialRegion({
+            latitude: region.latitude,
+            longitude: region.longitude,
+            latitudeDelta: 0.001,
+            longitudeDelta: 0.001,
+        })
+    }
 
     return (
         <ScrollView contentContainerStyle={[globalStyle.scrollContainer, { backgroundColor: globalColor.white, justifyContent: 'flex-start' }]} style={{ marginBottom: 10, paddingBottom: 10, backgroundColor: globalColor.white }}>
+            <StatusBar
+                animated={true}
+                backgroundColor={globalColor.white}
+                barStyle='dark-content'
+            />
             <Modal
                 animationType="fade"
                 transparent={true}
@@ -187,19 +230,27 @@ const Add = () => {
                 }}>
                 <View style={globalStyle.mapModalContainer}>
                     <MapView
+                        provider={PROVIDER_GOOGLE}
                         initialRegion={initialRegion}
-                        style={styles.map} >
-                        <Marker coordinate={{
-                            latitude: initialRegion.latitude,
-                            longitude: initialRegion.longitude,
-                        }} />
+                        style={[styles.map]}
+                        onRegionChangeComplete={onRegionChangeComplete}
+                        showsUserLocation={true}
+                        showsMyLocationButton={true}
+                    >
                     </MapView>
-                    <View style={[globalStyle.mapModalHeader, { flexDirection: 'row', justifyContent: 'flex-end' }]}>
-                        <TouchableOpacity style={[globalStyle.leftBtnTop, styles.closeBtn]} onPress={getPosition}>
-                            <Image source={require('../../assets/icon/refresh-blue.png')} style={globalStyle.closeImg} />
-                        </TouchableOpacity>
-                        <TouchableOpacity style={[globalStyle.leftBtnTop, styles.closeBtn]} onPress={() => { setMapModal(!mapModal) }}>
-                            <Image source={require('../../assets/icon/close-blue.png')} style={globalStyle.closeImg} />
+
+                    <View style={[globalStyle.markerContainer]}>
+                        <Image source={require('../../assets/icon/location-lg.png')} style={{ width: 30, height: 30, resizeMode: 'contain', marginTop: -20 }} />
+                    </View>
+                    <View style={[globalStyle.mapModalFooter]}>
+                        <TouchableOpacity style={globalStyle.btnPrimary} onPress={() => {
+                            setLoading(!loading);
+                            setTimeout(() => {
+                                setLoading(false);
+                                setMapModal(false);
+                            }, 1500);
+                        }}>
+                            <Text style={[globalStyle.btnText, styles.bold]}>simpan</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -217,166 +268,75 @@ const Add = () => {
                     <View>
                         <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Nama Kos</Text>
                         <View style={[globalStyle.formGroup, globalStyle.input]}>
-                            <TextInput placeholder='Masukkan nama kos Anda' style={[globalStyle.inputText, styles.regular]} />
+                            <TextInput value={namaKos} onChangeText={setNamaKos} placeholder='Masukkan nama kos Anda' style={[globalStyle.inputText, styles.regular]} />
                         </View>
                     </View>
                     <View>
                         <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Jenis Kos</Text>
                         <View style={globalStyle.radioContainer}>
-                            <View style={globalStyle.radio}>
-                                <RadioButton
-                                    value="1"
-                                    status={jenisKos === 1 ? 'checked' : 'unchecked'}
-                                    onPress={() => {
-                                        setJenisKos(1);
-                                    }}
-                                />
-                                <Text>Putra</Text>
-                            </View>
-                            <View style={globalStyle.radio}>
-                                <RadioButton
-                                    value="2"
-                                    status={jenisKos === 2 ? 'checked' : 'unchecked'}
-                                    onPress={() => {
-                                        setJenisKos(2);
-                                    }}
-                                />
-                                <Text>Putri</Text>
-                            </View>
-                            <View style={globalStyle.radio}>
-                                <RadioButton
-                                    value="2"
-                                    status={jenisKos === 3 ? 'checked' : 'unchecked'}
-                                    onPress={() => {
-                                        setJenisKos(3);
-                                    }}
-                                />
-                                <Text>Campur</Text>
-                            </View>
+                            {dataJenisKos.map((item, index) => {
+                                return (
+                                    <View style={globalStyle.radio} key={index}>
+                                        <RadioButton
+                                            value={item.id_jenis_kos}
+                                            status={jenisKos === item.id_jenis_kos ? 'checked' : 'unchecked'}
+                                            onPress={() => {
+                                                setJenisKos(item.id_jenis_kos);
+                                            }}
+                                        />
+                                        <Text>{item.jenis_kos}</Text>
+                                    </View>
+                                )
+                            })}
                         </View>
                     </View>
                     <View>
                         <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Alamat Kos</Text>
                         <View style={[globalStyle.formGroup, globalStyle.input]}>
-                            <TextInput secureTextEntry placeholder='Masukkan alamat lengkap kos Anda' style={[globalStyle.inputText, styles.regular, { height: 100 }]} />
+                            <TextInput value={alamat} onChangeText={setAlamat} placeholder='Masukkan alamat lengkap kos Anda' style={[globalStyle.inputText, styles.regular, { height: 100 }]} />
                         </View>
                     </View>
                     <View>
                         <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Fasilitas</Text>
-                        <View style={globalStyle.radioContainer}>
-                            <View style={globalStyle.radio}>
-                                <Checkbox
-                                    status={wifi ? 'checked' : 'unchecked'}
-                                    onPress={() => {
-                                        setWifi(!wifi);
-                                        addFacility(1)
-                                    }}
-                                />
-                                <Text>Wifi</Text>
-                            </View>
-                            <View style={globalStyle.radio}>
-                                <Checkbox
-                                    status={km ? 'checked' : 'unchecked'}
-                                    onPress={() => {
-                                        setKM(!km);
-                                        addFacility(2)
-                                    }}
-                                />
-                                <Text>Kamar Mandi Dalam</Text>
-                            </View>
-                            <View style={globalStyle.radio}>
-                                <Checkbox
-                                    status={listrik ? 'checked' : 'unchecked'}
-                                    onPress={() => {
-                                        setListrik(!listrik);
-                                        addFacility(3)
-                                    }}
-                                />
-                                <Text>Listrik</Text>
-                            </View>
-                        </View>
-                        <View style={globalStyle.radioContainer}>
-                            <View style={globalStyle.radio}>
-                                <Checkbox
-                                    status={dapur ? 'checked' : 'unchecked'}
-                                    onPress={() => {
-                                        setDapur(!dapur);
-                                        addFacility(4)
-                                    }}
-                                />
-                                <Text>Dapur Bersama</Text>
-                            </View>
-                            <View style={globalStyle.radio}>
-                                <Checkbox
-                                    status={parkir ? 'checked' : 'unchecked'}
-                                    onPress={() => {
-                                        setParkir(!parkir);
-                                        addFacility(4)
-                                    }}
-                                />
-                                <Text>Parkir Mobil</Text>
-                            </View>
-                            <View style={globalStyle.radio}>
-                                <Checkbox
-                                    status={ac ? 'checked' : 'unchecked'}
-                                    onPress={() => {
-                                        setAC(!ac);
-                                        addFacility(4)
-                                    }}
-                                />
-                                <Text>Parkir Mobil</Text>
-                            </View>
+                        <View style={[globalStyle.radioContainer, { flexWrap: 'wrap', justifyContent: 'flex-start' }]}>
+                            {dataFasilitas.map((item, index) => {
+                                return (
+                                    <View style={globalStyle.radio} key={index}>
+                                        <Checkbox
+                                            status={fasilitas.includes(parseInt(item.id_fasilitas)) ? 'checked' : 'unchecked'}
+                                            onPress={() => {
+                                                addFacility(parseInt(item.id_fasilitas));
+                                            }}
+                                        />
+                                        <Text>{item.fasilitas}</Text>
+                                    </View>
+                                )
+                            })}
                         </View>
                     </View>
                     <View>
                         <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Jenis Sewa Kos</Text>
                         <View style={globalStyle.radioContainer}>
-                            <View style={globalStyle.radio}>
-                                <RadioButton
-                                    value="1"
-                                    status={jenisSewaKos === 1 ? 'checked' : 'unchecked'}
-                                    onPress={() => {
-                                        setJenisSewaKos(1);
-                                    }}
-                                />
-                                <Text>Harian</Text>
-                            </View>
-                            <View style={globalStyle.radio}>
-                                <RadioButton
-                                    value="2"
-                                    status={jenisSewaKos === 2 ? 'checked' : 'unchecked'}
-                                    onPress={() => {
-                                        setJenisSewaKos(2);
-                                    }}
-                                />
-                                <Text>Mingguan</Text>
-                            </View>
-                            <View style={globalStyle.radio}>
-                                <RadioButton
-                                    value="3"
-                                    status={jenisSewaKos === 3 ? 'checked' : 'unchecked'}
-                                    onPress={() => {
-                                        setJenisSewaKos(3);
-                                    }}
-                                />
-                                <Text>Bulanan</Text>
-                            </View>
-                            <View style={globalStyle.radio}>
-                                <RadioButton
-                                    value="4"
-                                    status={jenisSewaKos === 4 ? 'checked' : 'unchecked'}
-                                    onPress={() => {
-                                        setJenisSewaKos(4);
-                                    }}
-                                />
-                                <Text>Tahunan</Text>
-                            </View>
+                            {dataJenisSewa.map((item, index) => {
+                                return (
+                                    <View style={globalStyle.radio} key={index}>
+                                        <RadioButton
+                                            value={item.id_jenis_sewa}
+                                            status={jenisSewaKos === item.id_jenis_sewa ? 'checked' : 'unchecked'}
+                                            onPress={() => {
+                                                setJenisSewaKos(item.id_jenis_sewa);
+                                            }}
+                                        />
+                                        <Text>{item.jenis_sewa}</Text>
+                                    </View>
+                                )
+                            })}
                         </View>
                     </View>
                     <View>
                         <Text style={[globalStyle.label, styles.semiBold, globalStyle.text, { color: globalColor.primary, marginTop: 7 }]}>Harga Sewa</Text>
                         <View style={[globalStyle.formGroup, globalStyle.input]}>
-                            <TextInput placeholder='Rp. .....' style={[globalStyle.inputText, styles.regular]} />
+                            <TextInput value={harga} onChangeText={setHarga} placeholder='Rp. .....' style={[globalStyle.inputText, styles.regular]} />
                         </View>
                     </View>
                     <View>
@@ -439,6 +399,8 @@ const styles = StyleSheet.create({
     map: {
         width: '100%',
         height: '100%',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     closeBtn: {
         borderRadius: 100,
@@ -455,7 +417,6 @@ const styles = StyleSheet.create({
         marginTop: 5,
         marginRight: 5,
     },
-    
     img: {
         borderRadius: 10,
         width: '23%',

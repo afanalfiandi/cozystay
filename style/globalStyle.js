@@ -17,7 +17,7 @@ export const globalStyle = StyleSheet.create({
         marginBottom: 25
     },
     scrollView: {
-        height: height,
+        // height: height,
         backgroundColor: globalColor.white
     },
     scrollContainer: {
@@ -50,6 +50,9 @@ export const globalStyle = StyleSheet.create({
         alignItems: 'center',
         paddingHorizontal: 5
     },
+    label:{
+        fontSize: width * 0.025
+    },
     inputLabel: {
         fontSize: 17,
         color: globalColor.primary,
@@ -59,11 +62,11 @@ export const globalStyle = StyleSheet.create({
         color: globalColor.primary,
     },
     text: {
-        fontSize: 16,
+        fontSize: width * 0.03,
         color: globalColor.dark,
     },
     textSm: {
-        fontSize: 12,
+        fontSize: width * 0.0225,
         color: globalColor.dark,
     },
     spaceBetween: {
@@ -174,6 +177,25 @@ export const globalStyle = StyleSheet.create({
         textTransform: 'uppercase',
         color: globalColor.primary,
         letterSpacing: 2,
+    },
+    floatingBtn: {
+        position: 'absolute',
+        bottom: 90,
+        right: 25,
+        width: 45,
+        height: 45,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: globalColor.cement,
+        borderRadius: 12,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 4,
+        elevation: 3,
     },
     rightBtnTop: {
         width: 35,
@@ -301,6 +323,7 @@ export const globalStyle = StyleSheet.create({
         alignItems: 'center',
     },
     mapModalContainer: {
+        justifyContent: 'center',
         alignItems: 'center',
         flex: 1,
     },
@@ -312,6 +335,13 @@ export const globalStyle = StyleSheet.create({
         top: 0,
         right: 0
     },
+    mapModalFooter: {
+        padding: 10,
+        width: '100%',
+        alignItems: 'flex-end',
+        position: 'absolute',
+        bottom: 25,
+    },
     loadingContainer: {
         alignItems: 'center',
         flex: 1,
@@ -319,7 +349,7 @@ export const globalStyle = StyleSheet.create({
     },
     acceptBtn: {
         paddingVertical: 3,
-        paddingHorizontal: 10,
+        paddingHorizontal: 13,
         backgroundColor: globalColor.primary,
         justifyContent: 'center',
         alignItems: 'center',
@@ -331,13 +361,15 @@ export const globalStyle = StyleSheet.create({
     profileImgContainer: {
         marginVertical: 15,
         justifyContent: 'center',
-        alignItems: 'center'
+        alignItems: 'center',
+        borderRadius: 100,
+        height: 80,
     },
     profileImg: {
         borderRadius: 100,
         width: 80,
         height: 80,
-        resizeMode: 'contain'
+        resizeMode: 'contain',
     },
     imageView: {
         height: height * 0.35,
@@ -360,8 +392,8 @@ export const globalStyle = StyleSheet.create({
     },
     imgPreview: {
         width: 80,
-        height: 55,
-        resizeMode: 'contain',
+        height: 60,
+        resizeMode: 'cover',
         borderRadius: 10
     },
     catContainerPreview: {
@@ -415,10 +447,9 @@ export const globalStyle = StyleSheet.create({
         paddingVertical: 3,
         paddingHorizontal: 8,
         justifyContent: 'center',
-        alignItems: 'center',
         borderRadius: 5,
         marginRight: 5,
-        marginVertical: 5
+        marginVertical: 5,
     },
     contentFooter: {
         padding: 15,
@@ -450,7 +481,7 @@ export const globalStyle = StyleSheet.create({
         padding: 15
     },
     showedImg: {
-        width: '100%',
+        width: width,
         height: 300,
         resizeMode: 'contain'
     },
@@ -509,6 +540,28 @@ export const globalStyle = StyleSheet.create({
         height: 30,
         backgroundColor: globalColor.primary,
         marginRight: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
+        borderRadius: 100
+    },
+    badge: {
+        width: 10,
+        height: 10,
+        borderRadius: 20,
+        backgroundColor: globalColor.primary,
+        position: 'absolute',
+        top: 0,
+        right: 0
+    },
+    markerContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'absolute',
+    },
+    roundBtn: {
+        backgroundColor: globalColor.overlay,
+        width: 45,
+        height: 45,
         justifyContent: 'center',
         alignItems: 'center',
         borderRadius: 100
